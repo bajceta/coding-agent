@@ -1,0 +1,19 @@
+{
+  "name": "codingagent",
+  "version": "1.0.0",
+  "description": "A coding agent with dynamic tool discovery and OpenAI-compatible LLM support",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "bin": {
+    "codingagent": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

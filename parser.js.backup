@@ -1,0 +1,71 @@
+const toolCallRegex = /"tool_call"\s*:\s*(\{(?:[^{}]|(?:(?<=\\)"|(?<=\\)'))*\})/g;
+
+function extractToolCallRaw(responseText) {
+    const toolCalls = [];
+    let match;
+    while ((match = toolCallRegex.exec(responseText)) !== null) {
+        const toolCallJson = match[1];
+
+        toolCalls.push(toolCallJson);
+    }
+    return toolCalls;
+}
+
+// Parse potential tool calls from LLM response text (robust version)
+function parseToolCalls(responseText) {
+    if (!responseText || typeof responseText !== 'string') {
+        return [];
+    }
+
+    const toolCalls = [];
+    // This regex looks for the pattern: {"tool_call": {...}}
+    let match;
+
+    while ((match = toolCallRegex.exec(responseText)) !== null) {
+        try {
+            // Extract the tool call part and parse it
+            const toolCallJson = match[1];  // This is the inner object: {"name": "...", "arguments": {...}}
+
+            // The regex may have captured extra content, so we need to be more precise
+            // Let's look for complete JSON objects
+            const fullToolCall = `{${toolCallJson}}`;  // Reconstruct complete JSON
+
+            try {
+                const parsedToolCall = JSON.parse(fullToolCall);
+
+                // Validate structure
+                if (parsedToolCall.name && parsedToolCall.arguments !== undefined) {
+                    toolCalls.push({
+                        name: parsedToolCall.name,
+                        arguments: parsedToolCall.arguments || {}
+                    });
+                }
+            } catch (e) {
+                // Try to parse with more lenient approach
+                const match2 = fullToolCall.match(/"tool_call"\s*:\s*(\{.*\})/);
+                if (match2 && match2[1]) {
+                    try {
+                        const parsedToolCall = JSON.parse(match2[1]);
+
+                        // Validate structure
+                        if (parsedToolCall.name && parsedToolCall.arguments !== undefined) {
+                            toolCalls.push({
+                                name: parsedToolCall.name,
+                                arguments: parsedToolCall.arguments || {}
+                            });
+                        }
+                    } catch (e2) {
+                        console.error('Error parsing tool call:', e2.message);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing tool call:', e.message);
+            // Skip this malformed match
+        }
+    }
+
+    return toolCalls;
+}
+
+module.exports = { parseToolCalls, extractToolCallRaw };
