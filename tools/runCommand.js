@@ -8,7 +8,7 @@ async function execute(args) {
     const { stdout, stderr } = await execPromise(args.command);
     return {
       success: true,
-      stdout: stdout,
+      content: stdout,
       stderr: stderr
     };
   } catch (error) {
@@ -33,5 +33,5 @@ module.exports = {
     },
     required: ['command']
   },
-  execute
+  execute,
 };

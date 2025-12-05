@@ -1,23 +1,22 @@
 const LLM = require('./llm');
-const fs = require('fs').promises;
+const fs = require('fs');
+const path = require('path');
 const { exec } = require('child_process');
 const { parseToolCalls } = require('./parser');
 const util = require('util');
+const readline = require('readline');
 
 const execPromise = util.promisify(exec);
 
 class Agent {
-  constructor() {
+  constructor(rl) {
     this.llm = new LLM();
     this.tools = {};
     this.loadTools();
+    this.readline = rl;        
   }
 
   loadTools() {
-    // Load tools dynamically from the tools directory
-    const fs = require('fs');
-    const path = require('path');
-
     const toolsDir = path.join(__dirname, 'tools');
     if (fs.existsSync(toolsDir)) {
       const files = fs.readdirSync(toolsDir);
@@ -68,10 +67,15 @@ class Agent {
   }
 
   async askForConfirmation(toolName, args) {
-    // For simplicity in this implementation, we'll just return true
-    // In a full implementation, this would prompt the user
-    console.log(`Would prompt for confirmation to run ${toolName} with args:`, args);
-    return true;
+
+    return new Promise((resolve) => {
+      this.readline.question(
+        `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,
+        (answer) => {
+          resolve(/^y(es)?$/i.test(answer));
+        }
+      );
+    });
   }
 
   // Process a single tool call
@@ -88,9 +92,9 @@ class Agent {
         let resultText = '';
         if (result.success) {
           if (result.content !== undefined) {
-            resultText = `Tool ${toolName} returned: ${result.content.substring(0, 100)}...`;
+            resultText = `Tool ${toolName} returned: ${result.content}`;
           } else if (result.message) {
-            resultText = `Tool ${toolName} executed: ${result.message}`;
+            resultText = `Tool ${toolName} returned: ${result.message}`;
           } else {
             resultText = `Tool ${toolName} executed successfully.`;
           }
@@ -98,7 +102,6 @@ class Agent {
           resultText = `Tool ${toolName} failed: ${result.error || 'Unknown error'}`;
         }
 
-        console.log(resultText);
         return resultText;
       }
     } catch (error) {
@@ -145,7 +148,6 @@ class Agent {
       for (const toolCall of toolCalls) {
         // Execute the tool and get result
         const result = await this.processToolCall(toolCall, messages);
-
         // In a more sophisticated implementation, we would:
         // 1. Add the tool result back to conversation context
         // 2. Have LLM process that result to generate final response
@@ -153,6 +155,11 @@ class Agent {
 
         if (result) {
           console.log(`Tool execution result: ${result}`);
+          const msg = {
+             role:"tool",
+             content: result,
+            };
+          messages.push(msg)
         }
       }
     }

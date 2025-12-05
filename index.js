@@ -4,12 +4,13 @@ const Agent = require('./agent');
 const readline = require('readline');
 
 async function main() {
-  const agent = new Agent();
   
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
+
+  const agent = new Agent(rl);
 
   console.log('Coding Agent Started');
   console.log('Press ESC twice to stop requests');
@@ -24,7 +25,7 @@ async function main() {
   const messages = [
     {
       role: 'system',
-      content: 'You are a helpful coding assistant. You have access to tools for reading files, writing files, and running bash commands. When you need to use these tools, respond using this JSON format: {"tool_call": {"name": "readFile", "arguments": {"path": "/some/path"}}}'
+      content: 'You are a helpful coding assistant. State only facts that you are sure of. You have access to tools for reading files, writing files, and running bash commands. When you need to use these tools, respond using this JSON format: {"tool_call": {"name": "readFile", "arguments": {"path": "/some/path"}}}'
     }
   ];
 
