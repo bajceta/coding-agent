@@ -1,8 +1,8 @@
 const fs = require('fs').promises;
 
-async function execute(args) {
+async function execute(path) {
   try {
-    const content = await fs.readFile(args.path, 'utf8');
+    const content = await fs.readFile(path, 'utf8');
     return {
       success: true,
       content: content
@@ -18,15 +18,8 @@ async function execute(args) {
 module.exports = {
   name: 'readFile',
   description: 'Read the contents of a file',
-  parameters: {
-    type: 'object',
-    properties: {
-      path: {
-        type: 'string',
-        description: 'The path to the file to read'
-      }
-    },
-    required: ['path']
-  },
+  arguments: [
+      {"path": "path to the file to read"},
+  ],
   execute
 };

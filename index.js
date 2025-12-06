@@ -25,7 +25,8 @@ async function main() {
   const messages = [
     {
       role: 'system',
-      content: 'You are a helpful coding assistant. State only facts that you are sure of. You have access to tools for reading files, writing files, and running bash commands. When you need to use these tools, respond using this JSON format: {"tool_call": {"name": "readFile", "arguments": {"path": "/some/path"}}}'
+      content: `You are a helpful coding assistant. State only facts that you are sure of. 
+      `
     }
   ];
 

@@ -3,9 +3,9 @@ const util = require('util');
 
 const execPromise = util.promisify(exec);
 
-async function execute(args) {
+async function execute(command) {
   try {
-    const { stdout, stderr } = await execPromise(args.command);
+    const { stdout, stderr } = await execPromise(command);
     return {
       success: true,
       content: stdout,
@@ -23,15 +23,8 @@ async function execute(args) {
 module.exports = {
   name: 'runCommand',
   description: 'Run a bash command',
-  parameters: {
-    type: 'object',
-    properties: {
-      command: {
-        type: 'string',
-        description: 'The bash command to execute'
-      }
-    },
-    required: ['command']
-  },
+  arguments: [
+      {"command" :"bash command to execute"},
+  ],
   execute,
 };
