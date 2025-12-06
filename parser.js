@@ -1,6 +1,6 @@
 const toolCallRegex = /tool_call: (\w+)\n([\s\S]*?)end_tool_call/g
 const argumentsRegex = /(.*\n)([\s\S]*)?/
-const singleArg = /(.*):([\s\S]*)\n/
+const singleArg = /(.*): ?([\s\S]*)\n/
 
 let tools = [];
 
@@ -36,6 +36,9 @@ function parseToolCalls(responseText) {
                     toolCall.arguments.push(match[1]);
                     lines = match[2];
                 } else {
+                    if (lines[0]=='"' && lines[lines.length-1]=='"') {
+                        lines.slice(1,-1);
+                    }
                     toolCall.arguments.push(lines);
                 }
             }

@@ -22,56 +22,74 @@ class LLM {
       stream: true
     };
 
-    const response = await fetch(`${this.modelConfig.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.modelConfig.apiKey}`
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let fullResponse = '';
-
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const response = await fetch(`${this.modelConfig.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.modelConfig.apiKey}`
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6); // Remove 'data: ' prefix
-            if (data.trim() === '[DONE]') continue;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
 
-            try {
-              const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content || '';
-              if (content) {
-                fullResponse += content;
-                onChunk(content);
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6); // Remove 'data: ' prefix
+              if (data.trim() === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices[0]?.delta?.content || '';
+                if (content) {
+                  fullResponse += content;
+                  onChunk(content);
+                }
+              } catch (e) {
+                // Handle non-JSON lines
+                console.error('Error parsing chunk:', e.message);
               }
-            } catch (e) {
-              // Handle non-JSON lines
-              console.error('Error parsing chunk:', e.message);
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
-    }
 
-    return fullResponse;
+      return fullResponse;
+    } catch (error) {
+      // Check if it's an abort error
+      if (error.name === 'AbortError') {
+        throw new Error('Request was cancelled by user');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Stop the current request if one is in progress
+   */
+  stopRequest() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 }
 

@@ -10,6 +10,7 @@ class Agent {
         this.tools = {};
         this.loadTools();
         this.readline = rl;
+        this.messages = []; // Store reference to messages array
     }
 
     loadTools() {
@@ -97,6 +98,9 @@ class Agent {
 
     // Enhanced run method that handles tool calls in LLM responses
     async run(messages) {
+        // Store reference to messages array
+        this.messages = messages;
+        
         // Add system message with tool definitions if not already present
         systemPrompt(messages, this.tools);
 
@@ -144,6 +148,19 @@ class Agent {
         }
 
         return;
+    }
+
+    /**
+     * Stop the current request in progress
+     */
+    stopRequest() {
+        this.llm.stopRequest();
+        
+        // Remove the last element from messages (the user message that was being processed)
+        if (this.messages && this.messages.length > 0) {
+            const lastMessage = this.messages.pop();
+            console.log('\n🛑 Removed last message from conversation:', lastMessage.content);
+        }
     }
 }
 

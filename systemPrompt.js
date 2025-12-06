@@ -29,6 +29,8 @@ IMPORTANT Tool calling argument rules:
  - never place values in quotes
  - format of arguments is strictly name:value, no space after the name:
 
+If you need data, do a tool call and wait for response.
+
 Example: list files in current folder with ls.
 tool_call: runCommand
 command:ls
