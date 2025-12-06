@@ -71,9 +71,6 @@ class Agent {
         try {
             const toolName = toolCallData.name;
             const args = toolCallData.arguments || {};
-
-            console.log(`\nExecuting tool: ${toolName}`);
-
             const result = await this.executeTool(toolName, args);
 
             if (result !== null) { // Only proceed if execution was confirmed
@@ -114,8 +111,8 @@ class Agent {
             hasToolCalls = false;
 
             // Run the LLM and capture full response
-            console.log("MAKE LLM REQUEST");
-            console.log(currentMessages[currentMessages.length - 1]);
+            //console.log("MAKE LLM REQUEST");
+            //console.log(currentMessages[currentMessages.length - 1]);
 
             const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
                 process.stdout.write(chunk);
@@ -141,7 +138,6 @@ class Agent {
                     const result = await this.processToolCall(toolCall, currentMessages);
 
                     if (result) {
-                        console.log(`Tool execution result: ${result}`);
                         const msg = {
                             role: "tool",
                             content: result,

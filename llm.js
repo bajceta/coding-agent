@@ -46,7 +46,6 @@ class LLM {
                     const { done, value } = await reader.read();
 
                     if (done) {
-                        console.log("DONE READING STREAM");
                         break;
                     }
                     const chunk = decoder.decode(value);

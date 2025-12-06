@@ -54,7 +54,7 @@ ${toolDefinitions.map(toolDefinitionToText).join('\n')}
         } else {
             console.log("found no tool definitions");
         }
-        console.log(systemMsg)
+        //console.log(systemMsg)
     }
 }
 

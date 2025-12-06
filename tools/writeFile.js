@@ -21,7 +21,6 @@ async function execute(_path, content) {
 }
 
 module.exports = {
-  name: 'writeFile',
   description: 'Write content to a file',
   arguments: [
       {"path":"path to the file to write"},

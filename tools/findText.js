@@ -5,7 +5,6 @@ async function findText(text) {
 }
 
 module.exports = {
-  name: 'findText',
   description: 'Finds text in current project',
   arguments: [
       {"text" :"text to find"},

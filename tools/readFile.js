@@ -17,7 +17,6 @@ async function execute(path) {
 }
 
 module.exports = {
-  name: 'readFile',
   description: 'Read the contents of a file',
   arguments: [
       {"path": "path to the file to read"},

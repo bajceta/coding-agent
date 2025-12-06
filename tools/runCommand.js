@@ -22,7 +22,6 @@ async function execute(command) {
 }
 
 module.exports = {
-    name: 'runCommand',
     description: 'Run a bash command',
     arguments: [
         { "command": "bash command to execute" },
