@@ -134,12 +134,13 @@ ${args.join('\n')}
         let hasToolDefinitions = false;
         let systemMsg;
         for (const msg of messages) {
-            if (msg.role === 'system')
+            if (msg.role === 'system') {
                 systemMsg = msg;
+                break;
+            }
             if (msg.content.includes('tools') || msg.content.includes('functions')) {
                 hasToolDefinitions = true;
             }
-            break
         }
         if (!hasToolDefinitions) {
             const toolDefinitions = this.getToolDefinitions();
