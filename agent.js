@@ -100,7 +100,6 @@ class Agent {
     async run(messages) {
         // Store reference to messages array
         this.messages = messages;
-
         // Add system message with tool definitions if not already present
         systemPrompt(messages, this.tools);
 
