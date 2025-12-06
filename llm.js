@@ -12,7 +12,7 @@ class LLM {
         return response;
     }
 
-    async makeRequest(messages, onChunk) {
+    async makeRequest(messages, onChunk, onReasoningChunk) {
         const controller = new AbortController();
         this.abortController = controller;
 
