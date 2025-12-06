@@ -24,31 +24,31 @@ describe('Tool Call Parser', () => {
     test.only('should extract single argument tool call text correctly', () => {
         const responseText = `
 tool_call: readFile
-path: /tmp/test.txt
+path:/tmp/test.txt
 end_tool_call
 more text
 `;
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0]).toEqual({"name": "readFile", "arguments":"path: /tmp/test.txt\n"});
+        expect(result[0]).toEqual({"name": "readFile", "arguments":"path:/tmp/test.txt\n"});
     });
 
     test.only('should extract 2 argument tool call text correctly', () => {
         const responseText = `some text
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho not so much
+path:/tmp/test.txt
+content:hiho not so much
 end_tool_call
 more text
 `;
         const result = extractToolCallRaw(responseText);
-        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path: /tmp/test.txt\ncontent: hiho not so much\n"});
+        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path:/tmp/test.txt\ncontent:hiho not so much\n"});
     });
     test.only('should extract 2 argument long tool call text correctly', () => {
         const responseText = `
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho
+path:/tmp/test.txt
+content:hiho
 second line here
 third here
 end_tool_call
@@ -56,33 +56,33 @@ more text
 `;
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path: /tmp/test.txt\ncontent: hiho\nsecond line here\nthird here\n"});
+        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path:/tmp/test.txt\ncontent:hiho\nsecond line here\nthird here\n"});
     });
     test.only('should extract 2  separeate tool calls correctly', () => {
         const responseText = `some text
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho not so much
+path:/tmp/test.txt
+content:hiho not so much
 end_tool_call
 more text
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho
+path:/tmp/test.txt
+content:hiho
 second line here
 third here
 end_tool_call
 more text
 `;
         const result = extractToolCallRaw(responseText);
-        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path: /tmp/test.txt\ncontent: hiho not so much\n"});
-        expect(result[1]).toEqual({"name": "writeFile", "arguments":"path: /tmp/test.txt\ncontent: hiho\nsecond line here\nthird here\n"});
+        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path:/tmp/test.txt\ncontent:hiho not so much\n"});
+        expect(result[1]).toEqual({"name": "writeFile", "arguments":"path:/tmp/test.txt\ncontent:hiho\nsecond line here\nthird here\n"});
     });
 
     test.only('should parse single tool call correctly', () => {
         const responseText = `[
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho not so much
+path:/tmp/test.txt
+content:hiho not so much
 end_tool_call
 more text
 `
@@ -98,7 +98,7 @@ more text
     test.only('should parse single argument single tool call correctly', () => {
         const responseText = `[
 tool_call: readFile
-path: /tmp/test.txt
+path:/tmp/test.txt
 end_tool_call
 more text
 `
@@ -114,8 +114,8 @@ more text
     test.only('should parse long argument single tool call correctly', () => {
         const responseText = `[
 tool_call: writeFile
-path: /tmp/test.txt
-content: hiho not so much
+path:/tmp/test.txt
+content:hiho not so much
 even longer
 and longer
 end_tool_call
@@ -129,30 +129,17 @@ more text
             arguments: [ '/tmp/test.txt', "hiho not so much\neven longer\nand longer"]
         });
     });
-    test('should parse multiple tool calls correctly', () => {
-        const responseText = 'First call: {"tool_call": {"name": "readFile", "arguments": {"path": "/tmp/test.txt"}}} Second call: {"tool_call": {"name": "writeFile", "arguments": {"path": "/tmp/output.txt", "content": "Hello"}}}';
-        const result = parseToolCalls(responseText);
 
-        expect(result).toHaveLength(2);
-        expect(result[0]).toEqual({
-            name: 'readFile',
-            arguments: { path: '/tmp/test.txt' }
-        });
-        expect(result[1]).toEqual({
-            name: 'writeFile',
-            arguments: { path: '/tmp/output.txt', content: 'Hello' }
-        });
-    });
-
-    test('should handle malformed JSON gracefully', () => {
-        const responseText = 'Some text {"tool_call": {"name": "readFile", "arguments": {"path": "/tmp/test.txt"}}} and more text with invalid json: {"tool_call": {"name": "writeFile", "arguments": }';
+    test.only('should parse a long write file single tool call correctly', () => {
+       const fs = require('fs');
+       const responseText =  fs.readFileSync('./test/longWriteFile.js', 'utf8');
         const result = parseToolCalls(responseText);
 
         expect(result).toHaveLength(1);
-        expect(result[0]).toEqual({
-            name: 'readFile',
-            arguments: { path: '/tmp/test.txt' }
-        });
+        expect(result[0].name).toEqual("writeFile");
+        expect(result[0].arguments[0]).toEqual("index2.js");
+        expect(result[0].arguments[1]).toMatch(/main\(\).catch\(console.error\);$/);
+        expect(result[0].arguments[1]).toMatch(/#!\/usr/);
     });
 
     test('should return empty array for no tool calls', () => {

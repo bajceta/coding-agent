@@ -16,20 +16,38 @@ function systemPrompt(messages, tools) {
         if (toolDefinitions.length > 0) {
             // Add system message that indicates available tools
             systemMsg.content = systemMsg.content + `
+If you need information from files or system commands, use the appropriate tool.
+When you need to use tools, respond using this format:
+tool_call: toolName
+argument1:value
+argument2:longer
+value
+end_tool_call
+
+IMPORTANT Tool call rules:
+ - argument names are followed by a column
+ - argument values should not be quoted
+ - multiline argument values should not be quoted
+
+Example: list files in current folder with ls.
+tool_call: runCommand
+command:ls
+end_tool_call
+Example: find text "treasure" in current folder
+tool_call: findText
+path:./
+text:treasure
+Example: write content to file 'demo.js'
+tool_call:writeFile
+path:demo.js
+content:function helloWorld(){
+   console.log("hello world");
+}
+helloWorld();
+end_tool_call
+
 You have access to following tools:
 ${toolDefinitions.map(toolDefinitionToText).join('\n')}
-If you need information from files or system commands, use the appropriate tool.
-When you need to use these tools, respond using this format:
-
-Example task is to list files in current folder with ls.
-tool_call: runCommand
-command: ls
-end_tool_call
-Example tasks is to find text "treasure" in current folder
-tool_call: findText
-path: ./
-text: "treasure"
-end_tool_call
             `
         } else {
             console.log("found no tool definitions");

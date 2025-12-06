@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 
 async function execute(path) {
+    console.log("READFILE: " + path);
   try {
     const content = await fs.readFile(path, 'utf8');
     return {

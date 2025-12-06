@@ -1,12 +1,8 @@
 const LLM = require('./llm');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
 const { parseToolCalls, setTools } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
-const util = require('util');
-
-const execPromise = util.promisify(exec);
 
 class Agent {
     constructor(rl) {
@@ -80,9 +76,9 @@ class Agent {
                 let resultText = '';
                 if (result.success) {
                     if (result.content !== undefined) {
-                        resultText = `Tool ${toolName} returned: ${result.content}`;
+                        resultText = `Tool ${toolName} returned:\n${result.content}`;
                     } else if (result.message) {
-                        resultText = `Tool ${toolName} returned: ${result.message}`;
+                        resultText = `Tool ${toolName} returned:\n${result.message}`;
                     } else {
                         resultText = `Tool ${toolName} executed successfully.`;
                     }
@@ -104,88 +100,50 @@ class Agent {
         // Add system message with tool definitions if not already present
         systemPrompt(messages, this.tools);
 
-        // Run the LLM and capture full response
-        const fullResponse = await this.llm.streamResponse(messages, (chunk) => {
-            process.stdout.write(chunk);
-        });
+        let currentMessages = messages;
+        let hasToolCalls = true;
 
-        // Check if LLM provided any tool calls in its response
-        const toolCalls = parseToolCalls(fullResponse);
+        while (hasToolCalls) {
+            hasToolCalls = false;
 
-        if (toolCalls.length > 0) {
-            console.log('\n--- Tool Calls Detected ---');
+            // Run the LLM and capture full response
+            console.log("MAKE LLM REQUEST" );
+            console.log(currentMessages[currentMessages.length-1]);
 
-            // Process each tool call one by one
-            for (const toolCall of toolCalls) {
-                // Execute the tool and get result
-                const result = await this.processToolCall(toolCall, messages);
-                // In a more sophisticated implementation, we would:
-                // 1. Add the tool result back to conversation context
-                // 2. Have LLM process that result to generate final response
-                // For now, just show what would happen
+            const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
+                process.stdout.write(chunk);
+            });
+            console.log(fullResponse);
+            currentMessages.push({
+                role: 'assistant',
+                content: fullResponse,
+            });
 
-                if (result) {
-                    console.log(`Tool execution result: ${result}`);
-                    const msg = {
-                        role: "tool",
-                        content: result,
-                    };
-                    messages.push(msg)
+            // Check if LLM provided any tool calls in its response
+            const toolCalls = parseToolCalls(fullResponse);
+
+            if (toolCalls.length > 0) {
+                hasToolCalls = true;
+                console.log('\n--- Tool Calls Detected ---');
+
+                // Process each tool call one by one
+                for (const toolCall of toolCalls) {
+                    // Execute the tool and get result
+                    const result = await this.processToolCall(toolCall, currentMessages);
+
+                    if (result) {
+                        console.log(`Tool execution result: ${result}`);
+                        const msg = {
+                            role: "tool",
+                            content: result,
+                        };
+                        currentMessages.push(msg);
+                    }
                 }
             }
         }
 
-        return fullResponse;
-    }
-
-    // Method for advanced tool calling - processes multiple rounds of interaction
-    async runWithMultiRound(messages) {
-        let currentMessages = [...messages];
-
-        // Add system message with tool definitions if not already present
-        let hasToolDefinitions = false;
-        for (const msg of currentMessages) {
-            if (msg.role === 'system' &&
-                (msg.content.includes('tools') || msg.content.includes('functions'))) {
-                hasToolDefinitions = true;
-                break;
-            }
-        }
-
-        if (!hasToolDefinitions) {
-            const toolDefinitions = this.getToolDefinitions();
-            if (toolDefinitions.length > 0) {
-                currentMessages.unshift({
-                    role: 'system',
-                    content: `You are a helpful coding assistant with access to the following tools:\n${JSON.stringify(toolDefinitions, null, 2)}\n\nWhen you need to use these tools, respond using this JSON format: {"tool_call": {"name": "tool_name", "arguments": {"arg1": "value1"}}}\n\nIf you need information from files or system commands, use the appropriate tool.`
-                });
-            }
-        }
-
-        // Initial LLM call
-        const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
-            process.stdout.write(chunk);
-        });
-
-        // Check for tool calls in response and process them
-        const toolCalls = parseToolCalls(fullResponse);
-
-        if (toolCalls.length > 0) {
-            console.log('\n--- Processing Tool Calls ---');
-
-            // Process each tool call and add results to conversation
-            for (const toolCall of toolCalls) {
-                const result = await this.processToolCall(toolCall, currentMessages);
-
-                if (result) {
-                    // In a real implementation, we'd want to add this back to the conversation
-                    // This is a simplified approach for demonstration
-                    console.log(`Added tool result to context: ${result.substring(0, 50)}...`);
-                }
-            }
-        }
-
-        return fullResponse;
+        return;
     }
 }
 

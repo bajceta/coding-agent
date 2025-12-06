@@ -1,6 +1,6 @@
 const toolCallRegex = /tool_call: (\w+)\n([\s\S]*?)end_tool_call/g
 const argumentsRegex = /(.*\n)([\s\S]*)?/
-const singleArg = /(.*): ([\s\S]*)\n/
+const singleArg = /(.*):([\s\S]*)\n/
 
 let tools = [];
 
