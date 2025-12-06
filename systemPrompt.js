@@ -24,11 +24,10 @@ argument2:longer
 value
 end_tool_call
 
-IMPORTANT Tool call argument rules:
+IMPORTANT Tool calling argument rules:
  - names are followed by a column
- - values should not be quoted
- - multiline values should not be quoted
- - content should not be quoted
+ - never place values in quotes
+ - format of arguments is strictly name:value, no space after the name:
 
 Example: list files in current folder with ls.
 tool_call: runCommand
