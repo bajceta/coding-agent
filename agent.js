@@ -4,6 +4,8 @@ const path = require('path');
 const { parseToolCalls, setTools } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
 
+const safeTools=['readFile'];
+
 class Agent {
     constructor(rl) {
         this.llm = new LLM();
@@ -22,6 +24,7 @@ class Agent {
                     const toolName = path.basename(file, '.js');
                     try {
                         const toolModule = require(path.join(toolsDir, file));
+                        toolModule.name = toolName;
                         this.tools[toolName] = toolModule;
                     } catch (error) {
                         console.error(`Failed to load tool ${toolName}:`, error.message);
@@ -40,7 +43,7 @@ class Agent {
         }
 
         // For write and run command tools, we need to ask for user confirmation
-        if (toolName === 'writeFile' || toolName === 'runCommand') {
+        if (!safeTools.includes(toolName)) {
             const confirm = await this.askForConfirmation(toolName, args);
             if (!confirm) {
                 console.log('Operation cancelled by user.');
@@ -100,7 +103,7 @@ class Agent {
     async run(messages) {
         // Store reference to messages array
         this.messages = messages;
-        
+
         // Add system message with tool definitions if not already present
         systemPrompt(messages, this.tools);
 
@@ -111,13 +114,15 @@ class Agent {
             hasToolCalls = false;
 
             // Run the LLM and capture full response
-            console.log("MAKE LLM REQUEST" );
-            console.log(currentMessages[currentMessages.length-1]);
+            console.log("MAKE LLM REQUEST");
+            console.log(currentMessages[currentMessages.length - 1]);
 
             const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
                 process.stdout.write(chunk);
+            }, (chunk) => {
+                process.stdout.write(chunk);
             });
-            console.log(fullResponse);
+
             currentMessages.push({
                 role: 'assistant',
                 content: fullResponse,
@@ -155,7 +160,7 @@ class Agent {
      */
     stopRequest() {
         this.llm.stopRequest();
-        
+
         // Remove the last element from messages (the user message that was being processed)
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
