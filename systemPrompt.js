@@ -26,8 +26,8 @@ end_tool_call
 
 IMPORTANT Tool call rules:
  - argument names are followed by a column
- - argument values should not be quoted
- - multiline argument values should not be quoted
+ - values should not be quoted
+ - multiline values should not be quoted
 
 Example: list files in current folder with ls.
 tool_call: runCommand

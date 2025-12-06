@@ -29,7 +29,10 @@ async function main() {
         {
             role: 'system',
             content: `You are a helpful coding assistant. State only facts that you are sure of.
-      `
+When asked to write code, provide complete, working examples with proper formatting.
+Always explain your reasoning before providing code solutions.
+If you encounter an error, analyze it carefully and suggest fixes.
+`
         }
     ];
 
@@ -65,17 +68,27 @@ async function main() {
         });
     }
 
-    // Handle ESC key presses directly
+    /**
+     * Handle ESC key presses for stopping requests
+     */
+    let escCount = 0;
     process.stdin.on('data', (key) => {
         // ESC key is ASCII 27
         if (key.charCodeAt(0) === 27) {
-            console.log('\nStopping request...');
-            agent.stopRequest(); // Call the agent's stop method
+            escCount++;
+            if (escCount >= 2) {
+                console.log('\n🛑 Stopping request...');
+                agent.stopRequest(); // Call the agent's stop method
+                escCount = 0; // Reset counter
+            } else {
+                console.log('\n⚠️ Press ESC again to stop current request');
+            }
+        } else {
+            escCount = 0; // Reset if any other key is pressed
         }
     });
 
-
-
+    // Handle command line arguments
     const question = process.argv[2];
 
     if (question) {
@@ -87,11 +100,11 @@ async function main() {
         });
 
         try {
-            console.log('\nAgent: ');
+            console.log('\n🤖 Agent: ');
             await agent.run(messages);
             console.log('\n');
         } catch (error) {
-            console.error('Error:', error.message);
+            console.error('❌ Error:', error.message);
         }
 
         rl.close();
@@ -101,4 +114,18 @@ async function main() {
     askQuestion();
 }
 
-main().catch(console.error);
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+    console.log('\n👋 Exiting gracefully...');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n👋 Exiting gracefully...');
+    process.exit(0);
+});
+
+main().catch(error => {
+    console.error('💥 Critical Error:', error.message);
+    process.exit(1);
+});
