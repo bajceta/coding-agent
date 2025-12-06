@@ -34,9 +34,9 @@ function parseToolCalls(responseText) {
                 if (i != (tool.arguments.length - 1)) {
                     const match = argumentsRegex.exec(lines);
                     toolCall.arguments.push(match[1]);
-                    lines = match[2];
+                    lines = match?.[2] || "";
                 } else {
-                    if (lines[0] == '"' && lines[lines.length - 1] == '"') {
+                    if (lines.length > 2 && lines[0] == '"' && lines[lines.length - 1] == '"') {
                         lines.slice(1, -1);
                     }
                     toolCall.arguments.push(lines);
@@ -48,9 +48,15 @@ function parseToolCalls(responseText) {
         // remove argument name
         for (var i = 0; i < toolCall.arguments.length; i++) {
             const rawarg = toolCall.arguments[i];
-            const match = singleArg.exec(rawarg);
-
-            toolCall.arguments[i] = (match[2]);
+            if (rawarg.length > 0) {
+                let match = singleArg.exec(rawarg);
+                if (match) {
+                    toolCall.arguments[i] = (match[2]);
+                }
+            }
+            else {
+                toolCall.arguments[i] = rawarg;
+            }
         }
         toolCalls.push(toolCall);
     }

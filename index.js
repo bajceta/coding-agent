@@ -58,6 +58,7 @@ If you encounter an error, analyze it carefully and suggest fixes.
                 console.log('\n');
             } catch (error) {
                 console.error('Error:', error.message);
+                console.error('Error:', error.stack);
                 messages.push({
                     role: 'assistant',
                     content: `Error: ${error.message}`
@@ -105,6 +106,7 @@ If you encounter an error, analyze it carefully and suggest fixes.
             console.log('\n');
         } catch (error) {
             console.error('❌ Error:', error.message);
+            console.error('Error:', error.stack);
         }
 
         rl.close();
@@ -127,5 +129,6 @@ process.on('SIGTERM', () => {
 
 main().catch(error => {
     console.error('💥 Critical Error:', error.message);
+    console.error('💥 Critical Error:', error.stack);
     process.exit(1);
 });
