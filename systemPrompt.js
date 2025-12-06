@@ -1,9 +1,7 @@
-const { toolPrompt, setTools } = require('./parser');
 
 let addedTools = false;
-function systemPrompt(messages, tools) {
+function systemPrompt(messages, tools, toolPrompt) {
     let systemMsg;
-    setTools(tools);
     for (const msg of messages) {
         if (msg.role === 'system') {
             systemMsg = msg;

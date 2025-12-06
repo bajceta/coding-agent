@@ -13,7 +13,20 @@ async function main() {
     process.stdin.setRawMode(true);
     process.stdin.setEncoding('utf8');
 
-    const agent = new Agent(rl);
+    // Parse command line arguments for parser selection
+    let parserType = 'plain'; // default parser
+    const args = process.argv.slice(2);
+    
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--parser' || args[i] === '-p') {
+            if (i + 1 < args.length) {
+                parserType = args[i + 1];
+                i++; // Skip next argument as it's the value
+            }
+        }
+    }
+
+    const agent = new Agent(rl, parserType);
 
     console.log('Coding Agent Started');
     console.log('Press ESC twice to stop requests');
@@ -22,6 +35,13 @@ async function main() {
     console.log('- "Read the contents of /etc/os-release"');
     console.log('- "Create a new file called test.txt with content Hello World"');
     console.log('- "Show me the current directory contents"');
+    console.log('');
+    
+    if (parserType === 'json') {
+        console.log('Using JSON parser mode');
+    } else {
+        console.log('Using plain text parser mode');
+    }
     console.log('');
 
     // Initial system message
@@ -92,7 +112,7 @@ If you encounter an error, analyze it carefully and suggest fixes.
     // Handle command line arguments
     const question = process.argv[2];
 
-    if (question) {
+    if (question && !question.startsWith('--parser') && !question.startsWith('-p')) {
         console.log(`> ${question}`);
 
         messages.push({

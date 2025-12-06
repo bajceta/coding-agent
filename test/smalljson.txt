@@ -1,0 +1,12 @@
+
+d file readme.md
+
+{
+  "tool_call": {
+    "name": "writeFile",
+    "arguments": {
+      "path": "/tmp/test.txt",
+      "content": "This is with  \""
+    }
+  }
+}

@@ -1,0 +1,46 @@
+d file readme.md
+
+ent:
+I'll implement the suggested improvements in a new file called agent2.js. Let me analyze what needs to be improved and create an enhanced version:
+
+{
+  "tool_call": {
+    "name": "writeFile",
+    "arguments": {
+      "path": "agent2.js",
+      "content": "const LLM = require('./llm');\nconst fs = require('fs');\nconst path = require('path');\nconst { parseToolCalls, setTools, toolPrompt } = require('./parser');\nconst { systemPrompt } = require('./systemPrompt');\nconst { parseToolCalls: parseToolCallsJson, setTools: setToolsJson, toolPrompt: toolPromptJson } = require('./parser-json');\n\nconst safeTools=['readFile'];\n\nclass Agent {\n    constructor(rl, parserType = 'plain') {\n        this.llm = new LLM();\n        this.tools = {};\n        this.parserType = parserType;\n        this.parseToolCalls= parseToolCalls;\n        this.toolPrompt = toolPrompt\n        this.loadTools();\n        this.readline = rl;\n        this.messages = []; // Store reference to messages array\n        if (parserType===\"json\"){\n            this.parseToolCalls = parseToolCallsJson;\n            this.toolPrompt = toolPromptJson;\n        }\n    }\n\n    loadTools() {\n        const toolsDir = path.join(__dirname, 'tools');\n        if (fs.existsSync(toolsDir)) {\n            const files = fs.readdirSync(toolsDir);\n            for (const file of files) {\n                if (file.endsWith('.js') && file !== 'index.js') {\n                    const toolName = path.basename(file, '.js');\n                    try {\n                        const toolModule = require(path.join(toolsDir, file));\n                        toolModule.name = toolName;\n                        this.tools[toolName] = toolModule;\n                    } catch (error) {\n                        console.error(`Failed to load tool ${toolName}:`, error.message);\n                    }\n                }\n            }\n        }\n\n        // Set tools for both parsers\n        setTools(this.tools);\n        setToolsJson(this.tools);\n    }\n\n\n    async executeTool(toolName, args) {\n        const tool = this.tools[toolName];\n        if (!tool) {\n            throw new Error(`Tool ${toolName} not found`);\n        }\n\n        // For write and run command tools, we need to ask for user confirmation\n        if (!safeTools.includes(toolName)) {\n            const confirm = await this.askForConfirmation(toolName, args);\n            if (!confirm) {\n                console.log('Operation cancelled by user.');\n                return { success: false, message: 'Operation cancelled by user' };\n            }\n        }\n\n        try {\n            const result = await tool.execute(...args);\n            return result;\n        } catch (error) {\n            return { success: false, error: error.message };\n        }\n    }\n\n    async askForConfirmation(toolName, args) {\n        return new Promise((resolve) => {\n            this.readline.question(\n                `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,\n                (answer) => {\n                    resolve(/^y(es)?$/i.test(answer));\n                }\n            );\n        });\n    }\n\n    // Process a single tool call\n    async processToolCall(toolCallData, messages) {\n        try {\n            const toolName = toolCallData.name;\n            const args = toolCallData.arguments || {};\n            const result = await this.executeTool(toolName, args);\n\n            if (result !== null) { // Only proceed if execution was confirmed\n                let resultText = '';\n                if (result.success) {\n                    if (result.content !== undefined) {\n                        resultText = `Tool ${toolName} returned:\\n${result.content}`;\n                    } else if (result.message) {\n                        resultText = `Tool ${toolName} returned:\\n${result.message}`;\n                    } else {\n                        resultText = `Tool ${toolName} executed successfully.`;\n                    }\n                } else {\n                    resultText = `Tool ${toolName} failed: ${result.error || 'Unknown error'}`;\n                }\n\n                return resultText;\n            }\n        } catch (error) {\n            console.error(`Error executing tool ${toolCallData.name}:`, error.message);\n            return `Tool execution error: ${error.message}`;\n        }\n    }\n\n\n    // Enhanced run method that handles tool calls in LLM responses\n    async run(messages) {\n        // Store reference to messages array\n        this.messages = messages;\n        // Add system message with tool definitions if not already present\n        systemPrompt(messages, this.tools, this.toolPrompt );\n\n        let currentMessages = messages;\n        let hasToolCalls = true;\n\n        while (hasToolCalls) {\n            hasToolCalls = false;\n\n            // Run the LLM and capture full response\n            const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {\n                process.stdout.write(chunk);\n            }, (chunk) => {\n                process.stdout.write(chunk);\n            });\n\n            currentMessages.push({\n                role: 'assistant',\n                content: fullResponse,\n            });\n\n            // Check if LLM provided any tool calls in its response\n            let toolCalls = [];\n            toolCalls = this.parseToolCalls(fullResponse);\n\n\n            if (toolCalls.length > 0) {\n                hasToolCalls = true;\n                console.log('\\n--- Tool Calls Detected ---');\n\n                // Process each tool call one by one\n                for (const toolCall of toolCalls) {\n                    // Execute the tool and get result\n                    const result = await this.processToolCall(toolCall, currentMessages);\n\n                    if (result) {\n                        const msg = {\n                            role: \"tool\",\n                            content: result,\n                        };\n                        currentMessages.push(msg);\n                    }\n                }\n            }\n        }\n\n        return;\n    }\n\n    /**\n     * Stop the current request in progress\n     */\n    stopRequest() {\n        this.llm.stopRequest();\n\n        // Remove the last element from messages (the user message that was being processed)\n        if (this.messages && this.messages.length > 0) {\n            const lastMessage = this.messages.pop();\n            console.log('\\n🛑 Removed last message from conversation:', lastMessage.content);\n        }\n    }\n}\n\nmodule.exports = Agent;"
+
+    }
+  }
+}failed parsing { parseToolCalls, setTools, toolPrompt }
+fai
+
+Agent:
+{
+  "tool_call": {
+    "name": "readFile",
+    "arguments": {
+      "path": "/tmp/test.txt"
+    }
+  }
+}
+something more
+{
+  "tool_call": {
+    "name": "writeFile",
+    "arguments": {
+      "path": "/tmp/test.txt",
+      "content": "This is the file content\\nmultiline\\n"
+    }
+  }
+}
+
+{
+  "tool_call": {
+    "name": "writeFile",
+    "arguments": {
+      "path": "/tmp/test.txt",
+      "content": "This is the with some \"quotes\" file content\\nmultiline\\n"
+    }
+  }
+}

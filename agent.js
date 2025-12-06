@@ -1,18 +1,26 @@
 const LLM = require('./llm');
 const fs = require('fs');
 const path = require('path');
-const { parseToolCalls, setTools } = require('./parser');
+const { parseToolCalls, setTools, toolPrompt } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
+const { parseToolCalls: parseToolCallsJson, setTools: setToolsJson, toolPrompt: toolPromptJson } = require('./parser-json');
 
 const safeTools=['readFile'];
 
 class Agent {
-    constructor(rl) {
+    constructor(rl, parserType = 'plain') {
         this.llm = new LLM();
         this.tools = {};
+        this.parserType = parserType;
+        this.parseToolCalls= parseToolCalls;
+        this.toolPrompt = toolPrompt
         this.loadTools();
         this.readline = rl;
         this.messages = []; // Store reference to messages array
+        if (parserType==="json"){
+            this.parseToolCalls = parseToolCallsJson;
+            this.toolPrompt = toolPromptJson;
+        }
     }
 
     loadTools() {
@@ -32,7 +40,10 @@ class Agent {
                 }
             }
         }
+
+        // Set tools for both parsers
         setTools(this.tools);
+        setToolsJson(this.tools);
     }
 
 
@@ -101,7 +112,7 @@ class Agent {
         // Store reference to messages array
         this.messages = messages;
         // Add system message with tool definitions if not already present
-        systemPrompt(messages, this.tools);
+        systemPrompt(messages, this.tools, this.toolPrompt );
 
         let currentMessages = messages;
         let hasToolCalls = true;
@@ -125,7 +136,9 @@ class Agent {
             });
 
             // Check if LLM provided any tool calls in its response
-            const toolCalls = parseToolCalls(fullResponse);
+            let toolCalls = [];
+            toolCalls = this.parseToolCalls(fullResponse);
+
 
             if (toolCalls.length > 0) {
                 hasToolCalls = true;
