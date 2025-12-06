@@ -15,7 +15,7 @@ class LLM {
   async makeRequest(messages, onChunk) {
     const controller = new AbortController();
     this.abortController = controller;
-    
+
     const requestBody = {
       model: this.modelConfig.model,
       messages: messages,
@@ -44,15 +44,15 @@ class LLM {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6); // Remove 'data: ' prefix
             if (data.trim() === '[DONE]') continue;
-            
+
             try {
               const parsed = JSON.parse(data);
               const content = parsed.choices[0]?.delta?.content || '';

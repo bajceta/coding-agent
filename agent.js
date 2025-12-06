@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { parseToolCalls, setTools } = require('./parser');
+const { systemPrompt } = require('./systemPrompt');
 const util = require('util');
 
 const execPromise = util.promisify(exec);
@@ -34,36 +35,6 @@ class Agent {
         setTools(this.tools);
     }
 
-    toolDefinitionToText(def) {
-        const args = [];
-
-        def.arguments.forEach(arg => {
-            const entries = Object.entries(arg);
-            args.push(entries[0][0] + ":" + entries[0][1]);
-        });
-        const result = `
-tool_name: ${def.name}
-description: ${def.description}
-arguments:
-${args.join('\n')}
-`
-        return result;
-    }
-    getToolDefinitions() {
-        const definitions = [];
-        console.log(this.tools);
-        for (const [name, tool] of Object.entries(this.tools)) {
-            if (tool.arguments && tool.description) {
-                definitions.push({
-                    name: tool.name || name,
-                    description: tool.description,
-                    arguments: tool.arguments
-                });
-            }
-        }
-        console.log(definitions);
-        return definitions;
-    }
 
     async executeTool(toolName, args) {
         const tool = this.tools[toolName];
@@ -131,44 +102,7 @@ ${args.join('\n')}
     // Enhanced run method that handles tool calls in LLM responses
     async run(messages) {
         // Add system message with tool definitions if not already present
-        let hasToolDefinitions = false;
-        let systemMsg;
-        for (const msg of messages) {
-            if (msg.role === 'system') {
-                systemMsg = msg;
-                break;
-            }
-            if (msg.content.includes('tools') || msg.content.includes('functions')) {
-                hasToolDefinitions = true;
-            }
-        }
-        if (!hasToolDefinitions) {
-            const toolDefinitions = this.getToolDefinitions();
-
-            if (toolDefinitions.length > 0) {
-                // Add system message that indicates available tools
-                systemMsg.content = systemMsg.content + `
-You have access to following tools:
-${toolDefinitions.map(this.toolDefinitionToText).join('\n')}
-If you need information from files or system commands, use the appropriate tool.
-When you need to use these tools, respond using this format:
-
-Example task is to list files in current folder with ls.
-tool_call: runCommand
-command: ls
-end_tool_call
-Example tasks is to find text "treasure" in current folder
-tool_call: findText
-path: ./
-text: "treasure"
-end_tool_call
-            `
-            } else {
-                console.log("found no tool definitions");
-            }
-            console.log(systemMsg)
-        }
-
+        systemPrompt(messages, this.tools);
 
         // Run the LLM and capture full response
         const fullResponse = await this.llm.streamResponse(messages, (chunk) => {

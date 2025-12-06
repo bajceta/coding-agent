@@ -4,11 +4,14 @@ const Agent = require('./agent');
 const readline = require('readline');
 
 async function main() {
-  
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
+
+  process.stdin.setRawMode(true);
+  process.stdin.setEncoding('utf8');
 
   const agent = new Agent(rl);
 
@@ -25,7 +28,7 @@ async function main() {
   const messages = [
     {
       role: 'system',
-      content: `You are a helpful coding assistant. State only facts that you are sure of. 
+      content: `You are a helpful coding assistant. State only facts that you are sure of.
       `
     }
   ];
@@ -46,16 +49,16 @@ async function main() {
 
       try {
         console.log('\nAgent: ');
-        
+
         // Run the agent with current conversation
         const response = await agent.run(messages);
-        
+
         // Add assistant response to conversation
         messages.push({
           role: 'assistant',
           content: response
         });
-        
+
         console.log('\n');
       } catch (error) {
         console.error('Error:', error.message);
@@ -68,6 +71,15 @@ async function main() {
       askQuestion();
     });
   }
+
+  // Handle ESC key presses directly
+  process.stdin.on('data', (key) => {
+    // ESC key is ASCII 27
+    if (key.charCodeAt(0) === 27) {
+      console.log('\nStopping request...');
+      agent.stopRequest(); // Call the agent's stop method
+    }
+  });
 
   askQuestion();
 }
