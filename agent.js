@@ -5,19 +5,19 @@ const { parseToolCalls, setTools, toolPrompt } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
 const { parseToolCalls: parseToolCallsJson, setTools: setToolsJson, toolPrompt: toolPromptJson } = require('./parser-json');
 
-const safeTools=['readFile'];
+const safeTools = ['readFile'];
 
 class Agent {
     constructor(rl, parserType = 'plain') {
         this.llm = new LLM();
         this.tools = {};
         this.parserType = parserType;
-        this.parseToolCalls= parseToolCalls;
+        this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt
         this.loadTools();
         this.readline = rl;
         this.messages = []; // Store reference to messages array
-        if (parserType==="json"){
+        if (parserType === "json") {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
@@ -46,25 +46,6 @@ class Agent {
         setToolsJson(this.tools);
     }
 
-
-    async executeTool(toolName, args) {
-        const tool = this.tools[toolName];
-        if (!tool) {
-            throw new Error(`Tool ${toolName} not found`);
-        }
-
-        // For write and run command tools, we need to ask for user confirmation
-        if (!safeTools.includes(toolName)) {
-            const confirm = await this.askForConfirmation(toolName, args);
-            if (!confirm) {
-                console.log('Operation cancelled by user.');
-                return null;
-            }
-        }
-
-        return await tool.execute(...args);
-    }
-
     async askForConfirmation(toolName, args) {
 
         return new Promise((resolve) => {
@@ -82,7 +63,21 @@ class Agent {
         try {
             const toolName = toolCallData.name;
             const args = toolCallData.arguments || {};
-            const result = await this.executeTool(toolName, args);
+            const tool = this.tools[toolName];
+            if (!tool) {
+                throw new Error(`Tool ${toolName} not found`);
+            }
+
+            // For write and run command tools, we need to ask for user confirmation
+            if (!safeTools.includes(toolName)) {
+                const confirm = await this.askForConfirmation(toolName, args);
+                if (!confirm) {
+                    console.log('Operation cancelled by user.');
+                    return  `Tool ${toolName} rejected by user`;
+                }
+            }
+
+            const result = await tool.execute(...args);
 
             if (result !== null) { // Only proceed if execution was confirmed
                 let resultText = '';
@@ -112,7 +107,7 @@ class Agent {
         // Store reference to messages array
         this.messages = messages;
         // Add system message with tool definitions if not already present
-        systemPrompt(messages, this.tools, this.toolPrompt );
+        systemPrompt(messages, this.tools, this.toolPrompt);
 
         let currentMessages = messages;
         let hasToolCalls = true;
@@ -127,7 +122,7 @@ class Agent {
             const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
                 process.stdout.write(chunk);
             }, (chunk) => {
-                process.stdout.write(chunk);
+                process.stdout.write('\x1b[31m' + chunk + '\x1b[0m');
             });
 
             currentMessages.push({

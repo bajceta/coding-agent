@@ -16,7 +16,7 @@ async function main() {
     // Parse command line arguments for parser selection
     let parserType = 'plain'; // default parser
     const args = process.argv.slice(2);
-    
+
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--parser' || args[i] === '-p') {
             if (i + 1 < args.length) {
@@ -36,7 +36,7 @@ async function main() {
     console.log('- "Create a new file called test.txt with content Hello World"');
     console.log('- "Show me the current directory contents"');
     console.log('');
-    
+
     if (parserType === 'json') {
         console.log('Using JSON parser mode');
     } else {
