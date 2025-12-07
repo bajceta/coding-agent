@@ -44,51 +44,6 @@ async function main() {
     }
     console.log('');
 
-    // Initial system message
-    const messages = [
-        {
-            role: 'system',
-            content: `You are a helpful coding assistant. State only facts that you are sure of.
-When asked to write code, provide complete, working examples with proper formatting.
-Always explain your reasoning before providing code solutions.
-If you encounter an error, analyze it carefully and suggest fixes.
-`
-        }
-    ];
-
-    async function askQuestion() {
-        rl.question('> ', async (input) => {
-            if (input.toLowerCase() === 'exit') {
-                console.log('Goodbye!');
-                rl.close();
-                return;
-            }
-
-            // Add user message to conversation
-            messages.push({
-                role: 'user',
-                content: input
-            });
-
-            try {
-                console.log('\nAgent: ');
-
-                await agent.run(messages);
-
-                console.log('\n');
-            } catch (error) {
-                console.error('Error:', error.message);
-                console.error('Error:', error.stack);
-                messages.push({
-                    role: 'assistant',
-                    content: `Error: ${error.message}`
-                });
-            }
-
-            askQuestion();
-        });
-    }
-
     /**
      * Handle ESC key presses for stopping requests
      */
@@ -115,14 +70,9 @@ If you encounter an error, analyze it carefully and suggest fixes.
     if (question && !question.startsWith('--parser') && !question.startsWith('-p')) {
         console.log(`> ${question}`);
 
-        messages.push({
-            role: 'user',
-            content: question
-        });
-
         try {
             console.log('\n🤖 Agent: ');
-            await agent.run(messages);
+            await agent.askQuestion(question);
             console.log('\n');
         } catch (error) {
             console.error('❌ Error:', error.message);
@@ -133,7 +83,7 @@ If you encounter an error, analyze it carefully and suggest fixes.
         return;
     }
 
-    askQuestion();
+    agent.showUserPrompt();
 }
 
 // Handle graceful shutdown

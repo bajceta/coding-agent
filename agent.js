@@ -10,19 +10,24 @@ const safeTools = ['readFile'];
 
 class Agent {
     constructor(rl, parserType = 'plain') {
+        this.window = new Window();
         this.llm = new LLM();
         this.tools = {};
         this.parserType = parserType;
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt
         this.loadTools();
-        this.window = new Window();
         this.readline = rl;
+        this.singleShot = false;
         this.messages = []; // Store reference to messages array
         if (parserType === "json") {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
+        this.messages.push({
+            role: 'system',
+            content: systemPrompt(this.tools, this.toolPrompt),
+        });
     }
 
     loadTools() {
@@ -48,7 +53,7 @@ class Agent {
         setToolsJson(this.tools);
 
         // Print number of loaded tools
-        console.log(`Loaded ${Object.keys(this.tools).length} tools`);
+        this.print(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
     async askForConfirmation(toolName, args) {
@@ -61,6 +66,44 @@ class Agent {
                 }
             );
         });
+    }
+
+    async showUserPrompt() {
+        this.readline.question('> ', async (input) => {
+            if (input.toLowerCase() === 'exit') {
+                this.print('Goodbye!');
+                this.readline.close();
+                return;
+            }
+
+            // Add user message to conversation
+            this.messages.push({
+                role: 'user',
+                content: input
+            });
+
+            try {
+                this.print('\nAgent: ');
+                await this.run();
+            } catch (error) {
+                console.error('Error:', error.message);
+                console.error('Error:', error.stack);
+                this.messages.push({
+                    role: 'assistant',
+                    content: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    async askQuestion(question) {
+        this.singleShot = true;
+        this.messages.push({
+            role: 'user',
+            content: question
+        });
+
+        await this.run();
     }
 
     // Process a single tool call
@@ -77,14 +120,14 @@ class Agent {
             if (!safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
-                    console.log('Operation cancelled by user.');
+                    this.print('Operation cancelled by user.');
                     return `Tool ${toolName} rejected by user`;
                 }
             }
 
             const result = await tool.execute(...args);
             if (result.error) {
-                console.log("Tool call error: "+ result.error);
+                this.print("Tool call error: " + result.error);
             }
 
             if (result !== null) { // Only proceed if execution was confirmed
@@ -100,7 +143,6 @@ class Agent {
                 } else {
                     resultText = `Tool ${toolName} failed: ${result.error || 'Unknown error'}`;
                 }
-
                 return resultText;
             }
         } catch (error) {
@@ -109,59 +151,39 @@ class Agent {
         }
     }
 
-
-
-    printChunk(chunk) {
+    print(chunk) {
         this.window.print(chunk);
     }
 
-    // Enhanced run method that handles tool calls in LLM responses
-    async run(messages) {
-        // Store reference to messages array
-        this.messages = messages;
-        // Add system message with tool definitions if not already present
-        systemPrompt(messages, this.tools, this.toolPrompt);
-
-        let currentMessages = messages;
+    async run() {
+        let currentMessages = this.messages;
         let hasToolCalls = true;
 
         while (hasToolCalls) {
             hasToolCalls = false;
-
-            // Run the LLM and capture full response
-            //console.log("MAKE LLM REQUEST");
-            //console.log(currentMessages[currentMessages.length - 1]);
-
             let fullResponse;
 
             try {
-                this.newRequest = true;
                 fullResponse = await this.llm.streamResponse(
                     currentMessages,
-                    this.printChunk.bind(this),
+                    this.print.bind(this),
                     (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m')
                 );
-
-
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`);
             }
 
             // TODO Do not place thinking content into the context.
-
             currentMessages.push({
                 role: 'assistant',
                 content: fullResponse,
             });
-
             // Check if LLM provided any tool calls in its response
-            let toolCalls = [];
-            toolCalls = this.parseToolCalls(fullResponse);
-
+            let toolCalls = this.parseToolCalls(fullResponse);
 
             if (toolCalls.length > 0) {
                 hasToolCalls = true;
-                console.log('\n--- Tool Calls Detected ---');
+                this.print('\n--- Tool Calls Detected ---');
 
                 // Process each tool call one by one
                 for (const toolCall of toolCalls) {
@@ -178,7 +200,9 @@ class Agent {
                 }
             }
         }
-
+        if (!this.singleShot) {
+            this.showUserPrompt();
+        }
         return;
     }
 
@@ -191,7 +215,7 @@ class Agent {
         // Remove the last element from messages (the user message that was being processed)
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            console.log('\n🛑 Removed last message from conversation:', lastMessage.content);
+            this.print('\n🛑 Removed last message from conversation:', lastMessage.content);
         }
     }
 }

@@ -1,28 +1,23 @@
 // for thinking models that need more confidence
 // You are very knowledgeable. An expert. Think and respond with confidence. Don't overthink.
 let addedTools = false;
-function systemPrompt(messages, tools, toolPrompt) {
-    let systemMsg;
-    for (const msg of messages) {
-        if (msg.role === 'system') {
-            systemMsg = msg;
-            break;
-        }
-    }
-    if (!addedTools) {
-        addedTools = true;
-        if (Object.keys(tools).length > 0) {
-            // Add system message that indicates available tools
-            systemMsg.content = systemMsg.content + `
+const basePrompt = `
+You are a helpful coding assistant. State only facts that you are sure of.
+When asked to write code, provide complete, working examples with proper formatting.
+Always explain your reasoning before providing code solutions.
+If you encounter an error, analyze it carefully and suggest fixes.
+`
+
+function systemPrompt(tools, toolPrompt) {
+    let prompt = basePrompt;
+
+    if (toolPrompt) {
+        prompt += `
 If you need information from files or system commands, use the appropriate tool.
 ${toolPrompt(tools)}
 `
-        } else {
-            console.log("found no tool definitions");
-        }
-        //console.log(systemMsg)
     }
+    return prompt;
 }
-
 
 module.exports = { systemPrompt };

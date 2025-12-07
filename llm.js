@@ -13,7 +13,6 @@ class LLM {
     async makeRequest(messages, onChunk, onReasoningChunk) {
         const controller = new AbortController();
         this.abortController = controller;
-
         const requestBody = {
             model: this.modelConfig.model,
             messages: messages,
