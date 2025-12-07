@@ -4,9 +4,11 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 
 async function execute(command) {
-    console.log("Running command: " + command);
+    const cwd = process.cwd();
+    console.log("Running command in Docker: " + command);
     try {
-        const { stdout, stderr } = await execPromise(command);
+        const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace node:alpine sh -c '${command}'`;
+        const { stdout, stderr } = await execPromise(dockerCommand);
         return {
             success: true,
             content: stdout,
@@ -24,7 +26,7 @@ async function execute(command) {
 module.exports = {
     description: 'Run a bash command',
     arguments: [
-        { "command": "bash command to execute" },
+        { 'command': 'bash command to execute' },
     ],
     execute,
 };

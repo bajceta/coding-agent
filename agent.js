@@ -46,6 +46,9 @@ class Agent {
         // Set tools for both parsers
         setTools(this.tools);
         setToolsJson(this.tools);
+
+        // Print number of loaded tools
+        console.log(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
     async askForConfirmation(toolName, args) {
@@ -174,8 +177,7 @@ class Agent {
                 console.error(`LLM Stream Error: ${error.message}`);
             }
 
-
-            // TODO Do not place content before </think> tag into the context.
+            // TODO Do not place thinking content into the context.
 
             currentMessages.push({
                 role: 'assistant',
