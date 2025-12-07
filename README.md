@@ -12,7 +12,18 @@ Tool calling works with Qwen3, it's naive, but uses few tokens.
 # Usage
 
 Interactive
-`node index.js`
+```
+node index.js
+```
 
 Cli
-`node index.js "Read agent.js and do a code review. Store results into codereview.md"`
+```
+node index.js "Read agent.js and do a code review. Store results into codereview.md"
+```
+
+Make it available via alias
+
+```
+echo "alias agent=$PWD/index.js" >> ~/.bashrc
+echo "alias agent=$PWD/index.js" >> ~/.zshrc
+```

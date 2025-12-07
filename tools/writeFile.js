@@ -3,14 +3,28 @@ const path = require('path');
 
 async function execute(_path, content) {
   try {
+    // Get current working directory
+    const cwd = process.cwd();
+    
+    // Resolve the provided path to an absolute path
+    const resolvedPath = path.resolve(_path);
+    
+    // Check if the resolved path is within the current working directory
+    if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
+      return {
+        success: false,
+        error: 'Path must be within the current working directory'
+      };
+    }
+
     // Ensure directory exists
-    const dir = path.dirname(_path);
+    const dir = path.dirname(resolvedPath);
     await fs.mkdir(dir, { recursive: true });
 
-    await fs.writeFile(_path, content, 'utf8');
+    await fs.writeFile(resolvedPath, content, 'utf8');
     return {
       success: true,
-      message: `Successfully wrote to ${_path}`
+      message: `Successfully wrote to ${resolvedPath}`
     };
   } catch (error) {
     return {

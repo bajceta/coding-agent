@@ -83,6 +83,9 @@ class Agent {
             }
 
             const result = await tool.execute(...args);
+            if (result.error) {
+                console.log("Tool call error: " + result.error);
+            }
 
             if (result !== null) { // Only proceed if execution was confirmed
                 let resultText = '';
