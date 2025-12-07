@@ -15,6 +15,7 @@ class Agent {
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt
         this.loadTools();
+        this.newRequest = true;
         this.readline = rl;
         this.messages = []; // Store reference to messages array
         if (parserType === "json") {
@@ -101,6 +102,28 @@ class Agent {
         }
     }
 
+    printChunk(chunk) {
+        const rows = process.stdout.rows - 1;
+        const columns = 0;
+        if (this.newRequest) {
+            process.stdout.write(`\x1b[${rows};${columns}H`);
+            this.newRequest = false;
+        }
+        if (chunk.includes('\n')) {
+            const parts = chunk.split('\n');
+            for (var i=0;i<parts[parts.length-1];i++){
+                process.stdout.write(parts[i]);
+                process.stdout.write(`\n`);
+                console.log('\n');
+                process.stdout.write(`\x1b[${rows+1};${columns}H`);
+                process.stdout.write(`\x1b[2K`);
+                process.stdout.write(`\n`);
+                process.stdout.write(`\x1b[${rows};${columns}H`);
+            }
+        } else {
+            process.stdout.write(chunk)
+        }
+    }
 
     // Enhanced run method that handles tool calls in LLM responses
     async run(messages) {
@@ -122,9 +145,10 @@ class Agent {
             let fullResponse;
 
             try {
+                this.newRequest = true;
                 fullResponse = await this.llm.streamResponse(
                     currentMessages,
-                    (chunk) => process.stdout.write(chunk),
+                    this.printChunk.bind(this),
                     (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m')
                 );
 

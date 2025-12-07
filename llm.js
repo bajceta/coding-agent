@@ -1,5 +1,4 @@
 const { getDefaultModel } = require('./config');
-
 class LLM {
     constructor() {
         this.modelConfig = getDefaultModel();
@@ -7,7 +6,6 @@ class LLM {
     }
 
     async streamResponse(messages, onChunk, onReasoningChunk) {
-        // Simple implementation without ESC key handling to avoid platform issues
         const response = await this.makeRequest(messages, onChunk, onReasoningChunk);
         return response;
     }
@@ -40,14 +38,16 @@ class LLM {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let fullResponse = '';
+            let startTime = null;
+            let totalTokens = 0;
+            const promptCount = messages.length;
 
             try {
                 while (true) {
                     const { done, value } = await reader.read();
 
-                    if (done) {
-                        break;
-                    }
+                    if (done) break;
+
                     const chunk = decoder.decode(value);
                     const lines = chunk.split('\n');
 
@@ -60,6 +60,30 @@ class LLM {
                                 const parsed = JSON.parse(data);
                                 const content = parsed.choices[0]?.delta?.content || '';
                                 const reasoningContent = parsed.choices[0]?.delta?.reasoning_content || '';
+
+                                if (content || reasoningContent) {
+                                    // Start timing on first chunk
+                                    if (!startTime) startTime = Date.now();
+                                    totalTokens++;
+
+                                    const currentTime = Date.now();
+                                    const elapsedSeconds = (currentTime - startTime) / 1000;
+                                    let tokensPerSecond = elapsedSeconds > 0 ? totalTokens / elapsedSeconds : 0;
+
+                                    // Save current position
+                                    if (false) {
+                                        process.stdout.write('\x1b[s');
+                                        const rows = process.stdout.rows;
+                                        const columns = 0;
+                                        process.stdout.write(`\x1b[${rows};${columns}H`);
+
+                                        // Display TPS
+                                        process.stdout.write(`Tokens/s: ${tokensPerSecond.toFixed(2)}`);
+                                        // Restore cursor position
+                                        process.stdout.write('\x1b[u');
+                                    }
+                                }
+
                                 if (content) {
                                     fullResponse += content;
                                     onChunk(content);
@@ -68,19 +92,27 @@ class LLM {
                                     onReasoningChunk(reasoningContent);
                                 }
                             } catch (e) {
-                                // Handle non-JSON lines
                                 console.error('Error parsing chunk:', e.message);
                             }
                         }
                     }
                 }
+
+                // Final logging after stream completes
+                if (startTime && totalTokens > 0) {
+                    const elapsedSeconds = (Date.now() - startTime) / 1000;
+                    const finalTps = totalTokens / elapsedSeconds;
+
+                    console.log(`\n\nLast message:\n${fullResponse}`);
+                    console.log(`Messages count: ${promptCount}, Speed: ${finalTps.toFixed(2)} tokens/s`);
+                }
+
             } finally {
                 reader.releaseLock();
             }
 
             return fullResponse;
         } catch (error) {
-            // Check if it's an abort error
             if (error.name === 'AbortError') {
                 throw new Error('Request was cancelled by user');
             }

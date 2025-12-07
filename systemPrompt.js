@@ -13,6 +13,7 @@ function systemPrompt(messages, tools, toolPrompt) {
         if (Object.keys(tools).length > 0) {
             // Add system message that indicates available tools
             systemMsg.content = systemMsg.content + `
+You are very knowledgeable. An expert. Think and respond with confidence.
 If you need information from files or system commands, use the appropriate tool.
 ${toolPrompt(tools)}
 `
