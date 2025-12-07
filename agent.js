@@ -84,7 +84,7 @@ class Agent {
 
             const result = await tool.execute(...args);
             if (result.error) {
-                console.log("Tool call error: " + result.error);
+                console.log("Tool call error: "+ result.error);
             }
 
             if (result !== null) { // Only proceed if execution was confirmed
@@ -138,10 +138,10 @@ class Agent {
         }
         if (chunk.includes('\n')) {
             const lines = chunk.split('\n');
-            this.printAddToLine(lines[0]);
+            this.printAddToLine(lines.shift());
             for (const line of lines) {
                 this.newline()
-                this.printAddToLine(lines[0]);
+                this.printAddToLine(line);
             }
         } else {
             this.printAddToLine(chunk);
