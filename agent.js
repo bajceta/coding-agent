@@ -73,7 +73,7 @@ class Agent {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     console.log('Operation cancelled by user.');
-                    return  `Tool ${toolName} rejected by user`;
+                    return `Tool ${toolName} rejected by user`;
                 }
             }
 
@@ -119,11 +119,20 @@ class Agent {
             //console.log("MAKE LLM REQUEST");
             //console.log(currentMessages[currentMessages.length - 1]);
 
-            const fullResponse = await this.llm.streamResponse(currentMessages, (chunk) => {
-                process.stdout.write(chunk);
-            }, (chunk) => {
-                process.stdout.write('\x1b[31m' + chunk + '\x1b[0m');
-            });
+            let fullResponse;
+
+            try {
+                fullResponse = await this.llm.streamResponse(
+                    currentMessages,
+                    (chunk) => process.stdout.write(chunk),
+                    (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m')
+                );
+
+
+            } catch (error) {
+                console.error(`LLM Stream Error: ${error.message}`);
+            }
+
 
             currentMessages.push({
                 role: 'assistant',
