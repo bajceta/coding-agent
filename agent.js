@@ -175,6 +175,8 @@ class Agent {
             }
 
 
+            // TODO Do not place content before </think> tag into the context.
+
             currentMessages.push({
                 role: 'assistant',
                 content: fullResponse,
