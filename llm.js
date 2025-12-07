@@ -107,8 +107,8 @@ class LLM {
                     const elapsedSeconds = (Date.now() - startTime) / 1000;
                     const finalTps = totalTokens / elapsedSeconds;
 
-                    console.log(`\n\nLast message:\n${fullResponse}`);
-                    console.log(`Messages count: ${promptCount}, Speed: ${finalTps.toFixed(2)} tokens/s`);
+                    //console.log(`\n\nLast message:\n${fullResponse}`);
+                    //console.log(`Messages count: ${promptCount}, Speed: ${finalTps.toFixed(2)} tokens/s`);
                 }
 
             } finally {

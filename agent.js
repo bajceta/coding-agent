@@ -4,6 +4,7 @@ const path = require('path');
 const { parseToolCalls, setTools, toolPrompt } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
 const { parseToolCalls: parseToolCallsJson, setTools: setToolsJson, toolPrompt: toolPromptJson } = require('./parser-json');
+const Window = require('./window');
 
 const safeTools = ['readFile'];
 
@@ -15,8 +16,7 @@ class Agent {
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt
         this.loadTools();
-        this.newRequest = true;
-        this.columnPos = 0;
+        this.window = new Window();
         this.readline = rl;
         this.messages = []; // Store reference to messages array
         if (parserType === "json") {
@@ -109,43 +109,10 @@ class Agent {
         }
     }
 
-    newline() {
-        const rows = process.stdout.rows;
-        const statusRow = rows;  // Last row (status bar)
-        const textAreaBottom = rows - 1; // Row above status bar
-        //Clean status bar
-        process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
-        // Shift screen up to make room for new text
-        process.stdout.write('\x1b[1S');
-        // Move cursor to bottom of text area (above status bar)
-        process.stdout.write(`\x1b[${textAreaBottom};0H`);
-        this.columnPos = 0;
-    }
 
-    printAddToLine(chunk) {
-        const columns = process.stdout.columns;
-        if ((this.columnPos + chunk.length) > columns) {
-            this.newline();
-        }
-        process.stdout.write(chunk);
-        this.columnPos += chunk.length;
-    }
 
     printChunk(chunk) {
-        if (this.newRequest) {
-            this.newline()
-            this.newRequest = false;
-        }
-        if (chunk.includes('\n')) {
-            const lines = chunk.split('\n');
-            this.printAddToLine(lines.shift());
-            for (const line of lines) {
-                this.newline()
-                this.printAddToLine(line);
-            }
-        } else {
-            this.printAddToLine(chunk);
-        }
+        this.window.print(chunk);
     }
 
     // Enhanced run method that handles tool calls in LLM responses
