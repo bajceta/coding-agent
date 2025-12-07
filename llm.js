@@ -71,7 +71,7 @@ class LLM {
                                     let tokensPerSecond = elapsedSeconds > 0 ? totalTokens / elapsedSeconds : 0;
 
                                     // Save current position
-                                    if (false) {
+                                    if (true) {
                                         process.stdout.write('\x1b[s');
                                         const rows = process.stdout.rows;
                                         const columns = 0;

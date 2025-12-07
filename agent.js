@@ -16,6 +16,7 @@ class Agent {
         this.toolPrompt = toolPrompt
         this.loadTools();
         this.newRequest = true;
+        this.columnPos = 0;
         this.readline = rl;
         this.messages = []; // Store reference to messages array
         if (parserType === "json") {
@@ -102,26 +103,42 @@ class Agent {
         }
     }
 
+    newline() {
+        const rows = process.stdout.rows;
+        const statusRow = rows;  // Last row (status bar)
+        const textAreaBottom = rows - 1; // Row above status bar
+        //Clean status bar
+        process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
+        // Shift screen up to make room for new text
+        process.stdout.write('\x1b[1S');
+        // Move cursor to bottom of text area (above status bar)
+        process.stdout.write(`\x1b[${textAreaBottom};0H`);
+        this.columnPos = 0;
+    }
+
+    printAddToLine(chunk) {
+        const columns = process.stdout.columns;
+        if ((this.columnPos + chunk.length) > columns) {
+            this.newline();
+        }
+        process.stdout.write(chunk);
+        this.columnPos += chunk.length;
+    }
+
     printChunk(chunk) {
-        const rows = process.stdout.rows - 1;
-        const columns = 0;
         if (this.newRequest) {
-            process.stdout.write(`\x1b[${rows};${columns}H`);
+            this.newline()
             this.newRequest = false;
         }
         if (chunk.includes('\n')) {
-            const parts = chunk.split('\n');
-            for (var i=0;i<parts[parts.length-1];i++){
-                process.stdout.write(parts[i]);
-                process.stdout.write(`\n`);
-                console.log('\n');
-                process.stdout.write(`\x1b[${rows+1};${columns}H`);
-                process.stdout.write(`\x1b[2K`);
-                process.stdout.write(`\n`);
-                process.stdout.write(`\x1b[${rows};${columns}H`);
+            const lines = chunk.split('\n');
+            this.printAddToLine(lines[0]);
+            for (const line of lines) {
+                this.newline()
+                this.printAddToLine(lines[0]);
             }
         } else {
-            process.stdout.write(chunk)
+            this.printAddToLine(chunk);
         }
     }
 
