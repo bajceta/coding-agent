@@ -17,7 +17,7 @@ class LLM {
             model: this.modelConfig.model,
             messages: messages,
             // "top_k": 20,
-            "temperature": 0.4,
+            "temperature": 0.1,
             // "repetition_penalty": 2.1,
             // "presence_penalty": 1.0,
             stream: true

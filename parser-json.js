@@ -11,7 +11,7 @@ function extractToolCallRaw(responseText) {
     // Look for JSON tool call patterns
     let match;
     while ((match = jsonToolCallRegex.exec(responseText)) !== null) {
-        const jsonString = match[0];
+        let jsonString = match[0];
         try {
             const parsed = JSON.parse(jsonString);
             if (parsed.tool_call && parsed.tool_call.name) {
@@ -21,7 +21,7 @@ function extractToolCallRaw(responseText) {
                 });
             }
         } catch (e) {
-            console.error("failed parsing " + jsonString);
+            console.error("failed parsing " + jsonString, e);
             continue;
         }
     }
@@ -96,7 +96,7 @@ function toolPrompt(tools) {
     "name": "toolName",
     "arguments": {
       "argument1": "value",
-      "argument2": "longer value"
+      "argument2": "longer value\\nnnext line "
     }
   }
 }`;
@@ -109,6 +109,7 @@ IMPORTANT JSON Tool Calling Rules:
 - Use valid JSON syntax
 - The tool_call object must contain name and arguments properties
 - Arguments should be key-value pairs
+- Multiline values should use the \\n, not newline.
 
 If you need data, do a tool call and wait for response.
 

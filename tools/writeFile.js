@@ -5,10 +5,10 @@ async function execute(_path, content) {
   try {
     // Get current working directory
     const cwd = process.cwd();
-    
+
     // Resolve the provided path to an absolute path
     const resolvedPath = path.resolve(_path);
-    
+
     // Check if the resolved path is within the current working directory
     if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
       return {
@@ -35,7 +35,7 @@ async function execute(_path, content) {
 }
 
 module.exports = {
-  description: 'Write content to a file',
+  description: 'Write content to a file.',
   arguments: [
       {"path":"path to the file to write"},
       {"content": "contents of the file to write"}
