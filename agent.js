@@ -24,6 +24,8 @@ class Agent {
         this.readline = rl;
         this.singleShot = false;
         this.messages = []; // Store reference to messages array
+        this.yoloMode = false; // Initialize yolo mode to false
+        
         if (parserType === 'json') {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
@@ -122,8 +124,9 @@ class Agent {
             }
             const showArgs = args.map((arg) => arg.substring(0, 20)).join(' ');
             this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
-            // For write and run command tools, we need to ask for user confirmation
-            if (!safeTools.includes(toolName)) {
+            
+            // Bypass safe tool check if yolo mode is enabled
+            if (!this.yoloMode && !safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     this.print('Operation cancelled by user.');
@@ -177,7 +180,7 @@ class Agent {
                     (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
                 );
             } catch (error) {
-                console.error(`LLM Stream Error: ${error.message}`);
+                console.error(`LLM Stream Error: ${error.message}`, error);
             }
             this.print('\n');
             // this.print(JSON.stringify(response));

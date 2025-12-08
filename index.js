@@ -12,9 +12,10 @@ async function main() {
     process.stdin.setRawMode(true);
     process.stdin.setEncoding('utf8');
 
-    // Parse command line arguments for parser selection
+    // Parse command line arguments for parser selection and yolo mode
     let parserType = 'plain'; // default parser
     let question = '';
+    let yoloMode = false; // default is false
     const args = process.argv.slice(2);
 
     for (let i = 0; i < args.length; i++) {
@@ -23,12 +24,15 @@ async function main() {
                 parserType = args[i + 1];
                 i++; // Skip next argument as it's the value
             }
+        } else if (args[i] === '--yolo' || args[i] === '-y') {
+            yoloMode = true;
         } else if (!question) {
             question = args[i]; // First non-parser argument is the question
         }
     }
 
     const agent = new Agent(rl, parserType);
+    agent.yoloMode = yoloMode; // Set yolo mode
 
     console.log('Coding Agent Started');
     console.log('Press ESC twice to stop requests');
@@ -45,6 +49,10 @@ async function main() {
         console.log('Using plain text parser mode');
     }
     console.log('');
+
+    if (yoloMode) {
+        console.log('⚠️ YOLO mode enabled: All tools will be allowed without confirmation');
+    }
 
     /**
      * Handle ESC key presses for stopping requests
