@@ -1,28 +1,28 @@
 let tools = [];
 
 function extractToolCallRaw(responseText) {
-    const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g
+    const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g;
     const toolCalls = [];
     let match;
     while ((match = toolCallRegex.exec(responseText)) !== null) {
         const toolcall = {
             name: match[1],
-            arguments: match[2]
-        }
+            arguments: match[2],
+        };
         toolCalls.push(toolcall);
     }
     return toolCalls;
 }
 
 function extractArgs(rawArgs) {
-    const argumentsRegex = /(\w+.):([\s\S]*?)ENDARG/g
+    const argumentsRegex = /(\w+.):([\s\S]*?)ENDARG/g;
     const args = [];
     let match;
     while ((match = argumentsRegex.exec(rawArgs)) !== null) {
         const arg = {
             name: match[1],
-            value: match[2]
-        }
+            value: match[2],
+        };
         args.push(arg);
     }
     return args;
@@ -43,7 +43,7 @@ function parseToolCalls(responseText) {
                 toolCall.arguments.push(args[i].value);
             }
         } else {
-            console.error("unknown tool : " + toolCall.name);
+            console.error('unknown tool : ' + toolCall.name);
         }
         toolCalls.push(toolCall);
     }
@@ -61,7 +61,7 @@ function getToolDefinitions(tools) {
             definitions.push({
                 name: tool.name || name,
                 description: tool.description,
-                arguments: tool.arguments
+                arguments: tool.arguments,
             });
         }
     }
@@ -104,14 +104,14 @@ end_tool_call
 
 You have access to following tools:
 ${toolDefinitions.map(toolDefinitionToText).join('\n')}
-`
+`;
 }
 
 function toolDefinitionToText(def) {
     const args = [];
-    def.arguments.forEach(arg => {
+    def.arguments.forEach((arg) => {
         const entries = Object.entries(arg);
-        args.push(entries[0][0] + ":" + entries[0][1]);
+        args.push(entries[0][0] + ':' + entries[0][1]);
     });
 
     const result = `
@@ -119,8 +119,8 @@ tool_name: ${def.name}
 description: ${def.description}
 arguments:
 ${args.join('\n')}
-`
+`;
     return result;
 }
 
-module.exports = { setTools, extractToolCallRaw, extractArgs,  parseToolCalls, toolPrompt };
+module.exports = { setTools, extractToolCallRaw, extractArgs, parseToolCalls, toolPrompt };

@@ -1,4 +1,4 @@
-const textWithNewlines = "Line 1\nLine 2\nLine 3";
+const textWithNewlines = 'Line 1\nLine 2\nLine 3';
 
 // Method 1: Using replace with regex
 const replacedWithBackslashN1 = textWithNewlines.replace(/\n/g, '\\\\n');

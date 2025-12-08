@@ -1,8 +1,9 @@
-"use strict";
+'use strict';
 
 //const jsonToolCallRegex = /(\{[^{}]*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[^{}]*)*\})/g
 //const jsonToolCallRegex = /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g
-const jsonToolCallRegex = /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g
+const jsonToolCallRegex =
+    /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g;
 const tools = [];
 
 function extractToolCallRaw(responseText) {
@@ -17,11 +18,11 @@ function extractToolCallRaw(responseText) {
             if (parsed.tool_call && parsed.tool_call.name) {
                 toolCalls.push({
                     name: parsed.tool_call.name,
-                    arguments: parsed.tool_call.arguments
+                    arguments: parsed.tool_call.arguments,
                 });
             }
         } catch (e) {
-            console.error("failed parsing " + jsonString, e);
+            console.error('failed parsing ' + jsonString, e);
             continue;
         }
     }
@@ -38,7 +39,7 @@ function parseToolCalls(responseText) {
             name: raw.name,
             arguments: [],
         };
-        const argsObj=raw.arguments;
+        const argsObj = raw.arguments;
         // For JSON parser, we need to parse the arguments string back into an object
         try {
             // Convert object to array of values in order matching tool definition
@@ -59,7 +60,7 @@ function parseToolCalls(responseText) {
                 }
             }
         } catch (e) {
-            console.error("Error parsing JSON arguments:", e.message);
+            console.error('Error parsing JSON arguments:', e.message);
             toolCall.arguments = [];
         }
 
@@ -80,7 +81,7 @@ function getToolDefinitions(tools) {
             definitions.push({
                 name: tool.name || name,
                 description: tool.description,
-                arguments: tool.arguments
+                arguments: tool.arguments,
             });
         }
     }
@@ -150,9 +151,9 @@ ${toolDefinitions.map(toolDefinitionToText).join('\n')}
 
 function toolDefinitionToText(def) {
     const args = [];
-    def.arguments.forEach(arg => {
+    def.arguments.forEach((arg) => {
         const entries = Object.entries(arg);
-        args.push(entries[0][0] + ":" + entries[0][1]);
+        args.push(entries[0][0] + ':' + entries[0][1]);
     });
 
     const result = `

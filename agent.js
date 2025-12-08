@@ -3,7 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const { parseToolCalls, setTools, toolPrompt } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
-const { parseToolCalls: parseToolCallsJson, setTools: setToolsJson, toolPrompt: toolPromptJson } = require('./parser-json');
+const {
+    parseToolCalls: parseToolCallsJson,
+    setTools: setToolsJson,
+    toolPrompt: toolPromptJson,
+} = require('./parser-json');
 const Window = require('./window');
 
 const safeTools = ['readFile'];
@@ -15,12 +19,12 @@ class Agent {
         this.tools = {};
         this.parserType = parserType;
         this.parseToolCalls = parseToolCalls;
-        this.toolPrompt = toolPrompt
+        this.toolPrompt = toolPrompt;
         this.loadTools();
         this.readline = rl;
         this.singleShot = false;
         this.messages = []; // Store reference to messages array
-        if (parserType === "json") {
+        if (parserType === 'json') {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
@@ -57,13 +61,12 @@ class Agent {
     }
 
     async askForConfirmation(toolName, args) {
-
         return new Promise((resolve) => {
             this.readline.question(
                 `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,
                 (answer) => {
                     resolve(/^y(es)?$/i.test(answer));
-                }
+                },
             );
         });
     }
@@ -79,7 +82,7 @@ class Agent {
             // Add user message to conversation
             this.messages.push({
                 role: 'user',
-                content: input
+                content: input,
             });
 
             try {
@@ -90,7 +93,7 @@ class Agent {
                 console.error('Error:', error.stack);
                 this.messages.push({
                     role: 'assistant',
-                    content: `Error: ${error.message}`
+                    content: `Error: ${error.message}`,
                 });
             }
         });
@@ -100,7 +103,7 @@ class Agent {
         this.singleShot = true;
         this.messages.push({
             role: 'user',
-            content: question
+            content: question,
         });
 
         await this.run();
@@ -127,10 +130,11 @@ class Agent {
 
             const result = await tool.execute(...args);
             if (result.error) {
-                this.print("Tool call error: " + result.error);
+                this.print('Tool call error: ' + result.error);
             }
 
-            if (result !== null) { // Only proceed if execution was confirmed
+            if (result !== null) {
+                // Only proceed if execution was confirmed
                 let resultText = '';
                 if (result.success) {
                     if (result.content !== undefined) {
@@ -161,13 +165,13 @@ class Agent {
 
         while (hasToolCalls) {
             hasToolCalls = false;
-            let fullResponse;
+            let response;
 
             try {
-                fullResponse = await this.llm.streamResponse(
+                response = await this.llm.streamResponse(
                     currentMessages,
                     this.print.bind(this),
-                    (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m')
+                    (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
                 );
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`);
@@ -176,10 +180,11 @@ class Agent {
             // TODO Do not place thinking content into the context.
             currentMessages.push({
                 role: 'assistant',
-                content: fullResponse,
+                content: response.content,
             });
+
             // Check if LLM provided any tool calls in its response
-            let toolCalls = this.parseToolCalls(fullResponse);
+            let toolCalls = this.parseToolCalls(response.content);
 
             if (toolCalls.length > 0) {
                 hasToolCalls = true;
@@ -192,7 +197,7 @@ class Agent {
 
                     if (result) {
                         const msg = {
-                            role: "tool",
+                            role: 'tool',
                             content: result,
                         };
                         currentMessages.push(msg);

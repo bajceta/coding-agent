@@ -4,10 +4,9 @@ const Agent = require('./agent');
 const readline = require('readline');
 
 async function main() {
-
     const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
 
     process.stdin.setRawMode(true);
@@ -98,7 +97,7 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-main().catch(error => {
+main().catch((error) => {
     console.error('💥 Critical Error:', error.message);
     console.error('💥 Critical Error:', error.stack);
     process.exit(1);

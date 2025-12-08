@@ -1,4 +1,5 @@
 const { getDefaultModel } = require('./config');
+
 class LLM {
     constructor() {
         this.modelConfig = getDefaultModel();
@@ -13,14 +14,20 @@ class LLM {
     async makeRequest(messages, onChunk, onReasoningChunk) {
         const controller = new AbortController();
         this.abortController = controller;
+
+        // Initialize stats
+        const stats = {
+            timeToFirstToken: null,
+            evalTime: 0,
+            promptProcessingPerSecond: 0,
+            tokenGenerationPerSecond: 0,
+        };
+
         const requestBody = {
             model: this.modelConfig.model,
             messages: messages,
-            // "top_k": 20,
-            "temperature": 0.1,
-            // "repetition_penalty": 2.1,
-            // "presence_penalty": 1.0,
-            stream: true
+            temperature: 0.1,
+            stream: true,
         };
 
         try {
@@ -28,10 +35,10 @@ class LLM {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.modelConfig.apiKey}`
+                    Authorization: `Bearer ${this.modelConfig.apiKey}`,
                 },
                 body: JSON.stringify(requestBody),
-                signal: controller.signal
+                signal: controller.signal,
             });
 
             if (!response.ok) {
@@ -41,7 +48,8 @@ class LLM {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let fullResponse = '';
-            let startTime = null;
+            let startTime = Date.now();
+            let firstTokenTime = null;
             let totalTokens = 0;
             const promptCount = messages.length;
 
@@ -55,6 +63,10 @@ class LLM {
                     const lines = chunk.split('\n');
 
                     for (const line of lines) {
+                        if (firstTokenTime === null) {
+                            firstTokenTime = Date.now();
+                            stats.timeToFirstToken = firstTokenTime - startTime;
+                        }
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6); // Remove 'data: ' prefix
                             if (data.trim() === '[DONE]') continue;
@@ -62,29 +74,27 @@ class LLM {
                             try {
                                 const parsed = JSON.parse(data);
                                 const content = parsed.choices[0]?.delta?.content || '';
-                                const reasoningContent = parsed.choices[0]?.delta?.reasoning_content || '';
+                                const reasoningContent =
+                                    parsed.choices[0]?.delta?.reasoning_content || '';
 
-                                if (content || reasoningContent) {
-                                    // Start timing on first chunk
-                                    if (!startTime) startTime = Date.now();
-                                    totalTokens++;
+                                totalTokens++;
 
-                                    const currentTime = Date.now();
-                                    const elapsedSeconds = (currentTime - startTime) / 1000;
-                                    let tokensPerSecond = elapsedSeconds > 0 ? totalTokens / elapsedSeconds : 0;
+                                const currentTime = Date.now();
+                                const elapsedSeconds = (currentTime - firstTokenTime) / 1000;
+                                let tokensPerSecond =
+                                    elapsedSeconds > 0 ? totalTokens / elapsedSeconds : 0;
+                                stats.tokensPerSecond = tokensPerSecond;
+                                // Save current position
+                                if (true) {
+                                    process.stdout.write('\x1b[s');
+                                    const rows = process.stdout.rows;
+                                    const columns = 0;
+                                    process.stdout.write(`\x1b[${rows};${columns}H`);
 
-                                    // Save current position
-                                    if (true) {
-                                        process.stdout.write('\x1b[s');
-                                        const rows = process.stdout.rows;
-                                        const columns = 0;
-                                        process.stdout.write(`\x1b[${rows};${columns}H`);
-
-                                        // Display TPS
-                                        process.stdout.write(`Tokens/s: ${tokensPerSecond.toFixed(2)}`);
-                                        // Restore cursor position
-                                        process.stdout.write('\x1b[u');
-                                    }
+                                    // Display TPS
+                                    process.stdout.write(`Tokens/s: ${tokensPerSecond.toFixed(2)}`);
+                                    // Restore cursor position
+                                    process.stdout.write('\x1b[u');
                                 }
 
                                 if (content) {
@@ -101,20 +111,30 @@ class LLM {
                     }
                 }
 
-                // Final logging after stream completes
+                // Calculate final stats after stream completes
                 if (startTime && totalTokens > 0) {
-                    const elapsedSeconds = (Date.now() - startTime) / 1000;
-                    const finalTps = totalTokens / elapsedSeconds;
+                    const evalTime = Date.now() - startTime;
+                    stats.evalTime = evalTime;
+                    stats.tokenGenerationPerSecond = totalTokens / (evalTime / 1000);
 
-                    //console.log(`\n\nLast message:\n${fullResponse}`);
-                    //console.log(`Messages count: ${promptCount}, Speed: ${finalTps.toFixed(2)} tokens/s`);
+                    // Calculate prompt processing per second
+                    const promptProcessingTime = firstTokenTime - startTime;
+                    if (promptProcessingTime > 0) {
+                        stats.promptProcessingPerSecond =
+                            promptCount / (promptProcessingTime / 1000);
+                    } else {
+                        stats.promptProcessingPerSecond = 0;
+                    }
                 }
-
             } finally {
                 reader.releaseLock();
             }
 
-            return fullResponse;
+            // Return response with stats
+            return {
+                response: fullResponse,
+                stats: stats,
+            };
         } catch (error) {
             if (error.name === 'AbortError') {
                 throw new Error('Request was cancelled by user');

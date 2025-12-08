@@ -5,16 +5,14 @@ const tools = {
     readFile: {
         name: 'readFile',
         description: 'Read the contents of a file',
-        arguments: [
-            { "path": "path to the file to read" },
-        ],
+        arguments: [{ path: 'path to the file to read' }],
     },
     writeFile: {
         name: 'writeFile',
         description: 'Read the contents of a file',
         arguments: [
-            { "path": "path to the file to read" },
-            { "content": "content of the file file to write" },
+            { path: 'path to the file to read' },
+            { content: 'content of the file file to write' },
         ],
     },
 };
@@ -39,7 +37,7 @@ something more
 `;
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0]).toEqual({ "name": "readFile", "arguments": { "path": "/tmp/test.txt" } });
+        expect(result[0]).toEqual({ name: 'readFile', arguments: { path: '/tmp/test.txt' } });
 
         const toolCalls = parseToolCalls(responseText);
         console.log(toolCalls);
@@ -71,11 +69,13 @@ something more
 `;
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0]).toEqual({ "name": "readFile", "arguments": { "path": "/tmp/test.txt" } });
+        expect(result[0]).toEqual({ name: 'readFile', arguments: { path: '/tmp/test.txt' } });
         expect(result[1]).toEqual({
-            name: "writeFile", "arguments": {
-                path: "/tmp/test.txt", content: "This is the file content\nmultiline\n"
-            }
+            name: 'writeFile',
+            arguments: {
+                path: '/tmp/test.txt',
+                content: 'This is the file content\nmultiline\n',
+            },
         });
     });
 
@@ -84,22 +84,22 @@ something more
         const result = extractToolCallRaw(responseText);
 
         expect(result[0]).toEqual({
-            name: "writeFile", "arguments": {
-                path: "/tmp/test.txt", content: "This is with  \""
-            }
+            name: 'writeFile',
+            arguments: {
+                path: '/tmp/test.txt',
+                content: 'This is with  "',
+            },
         });
     });
-
-
 
     test('should extract when there is js code inside tool calls', () => {
         const fs = require('fs');
         const responseText = fs.readFileSync('./test/longJsonFile.txt', 'utf8');
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0].name).toEqual("writeFile");
-        expect(result[0].arguments.path).toEqual("agent2.js");
-        expect(result[0].arguments.path).toEqual("agent2.js");
+        expect(result[0].name).toEqual('writeFile');
+        expect(result[0].arguments.path).toEqual('agent2.js');
+        expect(result[0].arguments.path).toEqual('agent2.js');
 
         expect(result[0].arguments.content).toMatch(/module.exports = Agent;$/);
         expect(result[0].arguments.content).toMatch(/const LLM/);

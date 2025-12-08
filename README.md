@@ -12,24 +12,29 @@ Tool calling works with Qwen3, it's naive, but uses few tokens.
 # Usage
 
 ## Interactive Mode
+
 ```
 node index.js
 ```
 
 ## Command Line Interface
+
 ```
 node index.js "Read agent.js and do a code review. Store results into codereview.md"
 ```
 
 ## Setting up an Alias
+
 To make the agent easily accessible, add this to your shell configuration file:
 
 For bash:
+
 ```
 echo "alias agent=$PWD/index.js" >> ~/.bashrc
 ```
 
 For zsh:
+
 ```
 echo "alias agent=$PWD/index.js" >> ~/.zshrc
 ```

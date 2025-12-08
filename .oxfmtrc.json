@@ -1,0 +1,5 @@
+{
+    "tabWidth": 4,
+    "singleQuote": true,
+    "ignorePatterns": ["package-lock.json"]
+}

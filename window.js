@@ -5,7 +5,7 @@ class Window {
 
     newline() {
         const rows = process.stdout.rows;
-        const statusRow = rows;  // Last row (status bar)
+        const statusRow = rows; // Last row (status bar)
         const textAreaBottom = rows - 1; // Row above status bar
         //Clean status bar
         process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
@@ -18,7 +18,7 @@ class Window {
 
     printAddToLine(chunk) {
         const columns = process.stdout.columns;
-        if ((this.columnPos + chunk.length) > columns) {
+        if (this.columnPos + chunk.length > columns) {
             this.newline();
         }
         process.stdout.write(chunk);
@@ -37,7 +37,6 @@ class Window {
             this.printAddToLine(text);
         }
     }
-
 }
 
 module.exports = Window;

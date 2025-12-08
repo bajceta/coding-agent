@@ -13,7 +13,7 @@ async function execute(_path, oldText, newText) {
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
-                error: 'Path must be within the current working directory'
+                error: 'Path must be within the current working directory',
             };
         }
 
@@ -28,12 +28,12 @@ async function execute(_path, oldText, newText) {
 
         return {
             success: true,
-            message: `Successfully replaced text in ${resolvedPath}`
+            message: `Successfully replaced text in ${resolvedPath}`,
         };
     } catch (error) {
         return {
             success: false,
-            error: error.message
+            error: error.message,
         };
     }
 }
@@ -41,9 +41,9 @@ async function execute(_path, oldText, newText) {
 module.exports = {
     description: 'Replace partial text in a file. For complete file use writeFile instead.',
     arguments: [
-        { "path": "path to the file to modify" },
-        { "oldText": "text to be replaced" },
-        { "newText": "replacement text" }
+        { path: 'path to the file to modify' },
+        { oldText: 'text to be replaced' },
+        { newText: 'replacement text' },
     ],
-    execute
+    execute,
 };
