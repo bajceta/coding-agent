@@ -14,7 +14,7 @@ async function main() {
     process.stdin.setEncoding('utf8');
 
     // Parse command line arguments for parser selection
-    let parserType = 'json'; // default parser
+    let parserType = 'plain'; // default parser
     let question = '';
     const args = process.argv.slice(2);
 

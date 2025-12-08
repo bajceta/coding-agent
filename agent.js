@@ -183,7 +183,7 @@ class Agent {
 
             if (toolCalls.length > 0) {
                 hasToolCalls = true;
-                this.print('\n--- Tool Calls Detected ---');
+                //this.print('\n--- Tool Calls Detected ---\n');
 
                 // Process each tool call one by one
                 for (const toolCall of toolCalls) {
