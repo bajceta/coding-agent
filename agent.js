@@ -61,7 +61,7 @@ class Agent {
     }
 
     async askForConfirmation(toolName, args) {
-        await new Promise((resolve) => {
+        const result = await new Promise((resolve) => {
             this.readline.question(
                 `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,
                 (answer) => {
@@ -70,6 +70,7 @@ class Agent {
             );
         });
         this.print('\n');
+        return result;
     }
 
     async showUserPrompt() {

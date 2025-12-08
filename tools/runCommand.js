@@ -7,7 +7,7 @@ async function execute(command) {
     const cwd = process.cwd();
     console.log('Running command in Docker: ' + command);
     try {
-        const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace node:alpine sh -c '${command}'`;
+        const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
         const { stdout, stderr } = await execPromise(dockerCommand);
         return {
             success: true,
