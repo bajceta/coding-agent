@@ -55,7 +55,7 @@ function parseToolCalls(responseText) {
                 }
             } else {
                 // If we can't find the tool definition, add all arguments as strings
-                for (const [key, value] of Object.entries(argsObj)) {
+                for (const [_, value] of Object.entries(argsObj)) {
                     toolCall.arguments.push(value);
                 }
             }

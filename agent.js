@@ -61,7 +61,7 @@ class Agent {
     }
 
     async askForConfirmation(toolName, args) {
-        return new Promise((resolve) => {
+        await new Promise((resolve) => {
             this.readline.question(
                 `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,
                 (answer) => {
@@ -69,6 +69,7 @@ class Agent {
                 },
             );
         });
+        this.print('\n');
     }
 
     async showUserPrompt() {
@@ -110,7 +111,7 @@ class Agent {
     }
 
     // Process a single tool call
-    async processToolCall(toolCallData, messages) {
+    async processToolCall(toolCallData) {
         try {
             const toolName = toolCallData.name;
             const args = toolCallData.arguments || {};

@@ -1,6 +1,5 @@
 // for thinking models that need more confidence
 // You are very knowledgeable. An expert. Think and respond with confidence. Don't overthink.
-let addedTools = false;
 const basePrompt = `
 You are a helpful coding assistant. State only facts that you are sure of.
 When asked to write code, provide complete, working examples with proper formatting.

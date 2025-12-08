@@ -86,17 +86,15 @@ class LLM {
                                     elapsedSeconds > 0 ? totalTokens / elapsedSeconds : 0;
                                 stats.tokensPerSecond = tokensPerSecond;
                                 // Save current position
-                                if (true) {
-                                    process.stdout.write('\x1b[s');
-                                    const rows = process.stdout.rows;
-                                    const columns = 0;
-                                    process.stdout.write(`\x1b[${rows};${columns}H`);
+                                process.stdout.write('\x1b[s');
+                                const rows = process.stdout.rows;
+                                const columns = 0;
+                                process.stdout.write(`\x1b[${rows};${columns}H`);
 
-                                    // Display TPS
-                                    process.stdout.write(`Tokens/s: ${tokensPerSecond.toFixed(2)}`);
-                                    // Restore cursor position
-                                    process.stdout.write('\x1b[u');
-                                }
+                                // Display TPS
+                                process.stdout.write(`Tokens/s: ${tokensPerSecond.toFixed(2)}`);
+                                // Restore cursor position
+                                process.stdout.write('\x1b[u');
 
                                 if (content) {
                                     fullResponse += content;
