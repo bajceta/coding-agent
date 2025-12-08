@@ -1,10 +1,7 @@
-const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g
-const argumentsRegex = /(.*\n)([\s\S]*)?/
-const singleArg = /(.*): ?([\s\S]*)\n/
-
 let tools = [];
 
 function extractToolCallRaw(responseText) {
+    const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g
     const toolCalls = [];
     let match;
     while ((match = toolCallRegex.exec(responseText)) !== null) {
@@ -13,50 +10,40 @@ function extractToolCallRaw(responseText) {
             arguments: match[2]
         }
         toolCalls.push(toolcall);
-
     }
     return toolCalls;
+}
+
+function extractArgs(rawArgs) {
+    const argumentsRegex = /(\w+.):([\s\S]*?)ENDARG/g
+    const args = [];
+    let match;
+    while ((match = argumentsRegex.exec(rawArgs)) !== null) {
+        const arg = {
+            name: match[1],
+            value: match[2]
+        }
+        args.push(arg);
+    }
+    return args;
 }
 
 function parseToolCalls(responseText) {
     const toolCalls = [];
     const rawCalls = extractToolCallRaw(responseText);
     for (const raw of rawCalls) {
+        const args = extractArgs(raw.arguments);
         const toolCall = {
             name: raw.name,
             arguments: [],
         };
-
         const tool = tools[toolCall.name];
         if (tool) {
-            let lines = raw.arguments;
             for (var i = 0; i < tool.arguments.length; i++) {
-                if (i != (tool.arguments.length - 1)) {
-                    const match = argumentsRegex.exec(lines);
-                    toolCall.arguments.push(match[1]);
-                    lines = match?.[2] || "";
-                } else {
-                    if (lines.length > 2 && lines[0] == '"' && lines[lines.length - 1] == '"') {
-                        lines.slice(1, -1);
-                    }
-                    toolCall.arguments.push(lines);
-                }
+                toolCall.arguments.push(args[i].value);
             }
         } else {
             console.error("unknown tool : " + toolCall.name);
-        }
-        // remove argument name
-        for (var i = 0; i < toolCall.arguments.length; i++) {
-            const rawarg = toolCall.arguments[i];
-            if (rawarg.length > 0) {
-                let match = singleArg.exec(rawarg);
-                if (match) {
-                    toolCall.arguments[i] = (match[2]);
-                }
-            }
-            else {
-                toolCall.arguments[i] = rawarg;
-            }
         }
         toolCalls.push(toolCall);
     }
@@ -86,33 +73,33 @@ function toolPrompt(tools) {
     return `
 When you need to use tools, respond using this format:
 tool_call: toolName
-argument1:value
+argument1:valueENDARG
 argument2:longer
-value
+valueENDARG
 end_tool_call
 
 IMPORTANT Tool calling argument rules:
  - names are followed by a column
  - never place values in quotes
- - format of arguments is strictly name:value, no space after the name:
+ - format of arguments is strictly name:valueENDARG
 
 If you need data, do a tool call and wait for response.
 
 Example: list files in current folder with ls.
 tool_call: runCommand
-command:ls
+command:lsENDARG
 end_tool_call
 Example: find text "treasure" in current folder
 tool_call: findText
-path:./
-text:treasure
+path:./ENDARG
+text:treasureENDARG
 Example: write content to file 'demo.js'
 tool_call:writeFile
-path:demo.js
+path:demo.jsENDARG
 content:function helloWorld(){
    console.log("hello world");
 }
-helloWorld();
+helloWorld();ENDARG
 end_tool_call
 
 You have access to following tools:
@@ -136,4 +123,4 @@ ${args.join('\n')}
     return result;
 }
 
-module.exports = { setTools, extractToolCallRaw, parseToolCalls, toolPrompt };
+module.exports = { setTools, extractToolCallRaw, extractArgs,  parseToolCalls, toolPrompt };

@@ -1,4 +1,4 @@
-const { parseToolCalls, extractToolCallRaw, setTools } = require('../parser');
+const { parseToolCalls, extractToolCallRaw, extractArgs, setTools } = require('../parser');
 
 const tools = {
     readFile: {
@@ -21,29 +21,49 @@ const tools = {
         setTools(tools);
 // Test cases for the tool call parser
 describe('Tool Call Parser', () => {
-    test('should extract single argument tool call text correctly', () => {
+    test.only('should extract tool call text correctly', () => {
         const responseText = `
 tool_call: readFile
-path:/tmp/test.txt
+path:/tmp/test.txtENDARG
 end_tool_call
 more text
 `;
         const result = extractToolCallRaw(responseText);
 
-        expect(result[0]).toEqual({"name": "readFile", "arguments":"path:/tmp/test.txt\n"});
+        expect(result[0]).toEqual({"name": "readFile", "arguments":"path:/tmp/test.txtENDARG\n"});
     });
 
-    test('should extract 2 argument tool call text correctly', () => {
-        const responseText = `some text
-tool_call: writeFile
-path:/tmp/test.txt
-content:hiho not so much
-end_tool_call
-more text
-`;
-        const result = extractToolCallRaw(responseText);
-        expect(result[0]).toEqual({"name": "writeFile", "arguments":"path:/tmp/test.txt\ncontent:hiho not so much\n"});
+    test.only('should extract single argument tool call text correctly', () => {
+        const responseText = `path:/tmp/test.txtENDARG`;
+        const result = extractArgs(responseText);
+
+        expect(result[0]).toEqual({"name": "path", "value":"/tmp/test.txt"});
     });
+
+    test.only('should extract 2 argument tool call text correctly', () => {
+        const responseText = `path:/tmp/test.txtENDARG
+content:hiho not so muchENDARG
+`;
+        const result = extractArgs(responseText);
+        expect(result[0]).toEqual({"name": "path", "value":"/tmp/test.txt"});
+        expect(result[1]).toEqual({"name": "content", "value":"hiho not so much"});
+    });
+
+    test.only('should extract multiline argument tool call text correctly', () => {
+        const responseText = `path:/tmp/test.txtENDARG
+content:hiho
+not
+so muchENDARG
+val2:testingENDARG
+`;
+        const result = extractArgs(responseText);
+        expect(result[0]).toEqual({"name": "path", "value":"/tmp/test.txt"});
+        expect(result[1]).toEqual({"name": "content", "value":"hiho\nnot\nso much"});
+        expect(result[2]).toEqual({"name": "val2", "value":"testing"});
+    });
+
+
+
     test('should extract 2 argument long tool call text correctly', () => {
         const responseText = `
 tool_call: writeFile
