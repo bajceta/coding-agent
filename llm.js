@@ -48,6 +48,7 @@ class LLM {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let fullResponse = '';
+            let reasoning = '';
             let startTime = Date.now();
             let firstTokenTime = null;
             let totalTokens = 0;
@@ -102,6 +103,7 @@ class LLM {
                                     onChunk(content);
                                 }
                                 if (reasoningContent.length > 0) {
+                                    reasoning += reasoningContent;
                                     onReasoningChunk(reasoningContent);
                                 }
                             } catch (e) {
@@ -132,8 +134,9 @@ class LLM {
 
             // Return response with stats
             return {
-                response: fullResponse,
-                stats: stats,
+                content: fullResponse,
+                reasoning,
+                stats,
             };
         } catch (error) {
             if (error.name === 'AbortError') {

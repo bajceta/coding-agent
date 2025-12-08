@@ -118,7 +118,8 @@ class Agent {
             if (!tool) {
                 throw new Error(`Tool ${toolName} not found`);
             }
-
+            const showArgs = args.map((arg) => arg.substring(0, 20)).join(' ');
+            this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
             // For write and run command tools, we need to ask for user confirmation
             if (!safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
@@ -176,7 +177,8 @@ class Agent {
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`);
             }
-
+            this.print('\n');
+            // this.print(JSON.stringify(response));
             // TODO Do not place thinking content into the context.
             currentMessages.push({
                 role: 'assistant',
@@ -186,13 +188,10 @@ class Agent {
             // Check if LLM provided any tool calls in its response
             let toolCalls = this.parseToolCalls(response.content);
 
+            //this.print(JSON.stringify(toolCalls));
             if (toolCalls.length > 0) {
                 hasToolCalls = true;
-                //this.print('\n--- Tool Calls Detected ---\n');
-
-                // Process each tool call one by one
                 for (const toolCall of toolCalls) {
-                    // Execute the tool and get result
                     const result = await this.processToolCall(toolCall, currentMessages);
 
                     if (result) {
