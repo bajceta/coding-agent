@@ -82,6 +82,10 @@ IMPORTANT Tool calling argument rules:
  - names are followed by a column
  - never place values in quotes
  - format of arguments is strictly name:valueENDARG
+ - tool call starts with "tool_call: toolName"
+ - tool call must end with "end_tool_call"
+ - argument must starts with "argumentName:"
+ - argument must ends with "ENDARG"
 
 If you need data, do a tool call and wait for response.
 

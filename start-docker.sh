@@ -22,7 +22,7 @@ fi
 
 # Run the docker command
 docker run -it --rm \
- -v /home/vlada/src/innercore/codingagent:/agent \
+ -v /home/vlada/src/innercore/agent2:/agent \
  -v /home/vlada/.config/codingagent.json:/root/.config/codingagent.json \
  -v $PWD:/workspace  \
  -w /workspace \

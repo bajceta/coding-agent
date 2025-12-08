@@ -1,7 +1,20 @@
 const runCommand = require('./runCommand');
 
 async function findText(text) {
-    return await runCommand.execute(`ag '${text}'`);
+    const result = await runCommand.execute(`ag '${text}'`);
+    if (result.success) {
+        return {
+            success: true,
+            content: result.content,
+            error: null
+        };
+    } else {
+        return {
+            success: false,
+            content: null,
+            error: result.error
+        };
+    }
 }
 
 module.exports = {

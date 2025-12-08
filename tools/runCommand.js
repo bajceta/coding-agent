@@ -7,42 +7,37 @@ async function execute(command, config) {
     const cwd = process.cwd();
     console.log('Running command: ' + command);
     
-    // Check if Docker is enabled in config
     const useDocker = config && config.useDocker !== false;
     
-    if (useDocker) {
-        console.log('Running command in Docker');
-        try {
+    try {
+        if (useDocker) {
+            console.log('Running command in Docker');
             const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
             const { stdout, stderr } = await execPromise(dockerCommand);
             return {
                 success: true,
                 content: stdout,
                 stderr: stderr,
+                error: null
             };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message,
-                code: error.code,
-            };
-        }
-    } else {
-        console.log('Running command locally');
-        try {
+        } else {
+            console.log('Running command locally');
             const { stdout, stderr } = await execPromise(command);
             return {
                 success: true,
                 content: stdout,
                 stderr: stderr,
-            };
-        } catch (error) {
-            return {
-                success: false,
-                error: error.message,
-                code: error.code,
+                error: null
             };
         }
+    } catch (error) {
+        return {
+            success: false,
+            content: null,
+            stderr: error.stderr || '',
+            error: error.message,
+            code: error.code
+        };
     }
 }
 
