@@ -1,6 +1,4 @@
 const LLM = require('./llm');
-const fs = require('fs');
-const path = require('path');
 const { parseToolCalls, setTools, toolPrompt } = require('./parser');
 const { systemPrompt } = require('./systemPrompt');
 const {
@@ -170,8 +168,6 @@ class Agent {
                 if (result.success) {
                     if (result.content !== undefined) {
                         resultText = `Tool ${toolName} returned:\n${result.content}`;
-                    } else if (result.message) {
-                        resultText = `Tool ${toolName} returned:\n${result.message}`;
                     } else {
                         resultText = `Tool ${toolName} executed successfully.`;
                     }

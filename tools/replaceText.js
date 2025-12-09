@@ -15,6 +15,16 @@ async function execute(_path, oldText, newText) {
         }
 
         const content = await fs.readFile(resolvedPath, 'utf8');
+
+        // Check if oldText exists in the content
+        if (!content.includes(oldText)) {
+            return {
+                success: false,
+                content: null,
+                error: `Text "${oldText}" not found in file ${resolvedPath}`,
+            };
+        }
+
         const newContent = content.split(oldText).join(newText);
         await fs.writeFile(resolvedPath, newContent, 'utf8');
 
