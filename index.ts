@@ -14,10 +14,10 @@ async function main() {
     }
 
     // Parse command line arguments for parser selection and yolo mode
-    let parserType: string = 'plain'; // default parser
+    let _parserType: string = 'plain'; // default parser
     let question: string | undefined = undefined;
-    let yoloMode: boolean = false; // default is false
-    let containerMode: boolean = true; // default is true as requested
+    let _yoloMode: boolean = false; // default is false
+    let _containerMode: boolean = true; // default is true as requested
     const args: string[] = process.argv.slice(2);
 
     // Get config after potential updates
