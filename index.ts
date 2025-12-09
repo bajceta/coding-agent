@@ -1,38 +1,45 @@
 #!/usr/bin/env node
 
 import Agent from './agent.ts';
-import { createInterface } from 'readline';
+import { init as initConfig, getConfig } from './config.ts'; // Import config singleton
 
 async function main() {
-    const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    process.stdin.setRawMode(true);
-    process.stdin.setEncoding('utf8');
+    initConfig();
+    let isTTY = true;
+    if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+        process.stdin.setEncoding('utf8');
+    } else {
+        isTTY = false;
+    }
 
     // Parse command line arguments for parser selection and yolo mode
     let parserType: string = 'plain'; // default parser
     let question: string | undefined = undefined;
     let yoloMode: boolean = false; // default is false
+    let containerMode: boolean = true; // default is true as requested
     const args: string[] = process.argv.slice(2);
+
+    // Get config after potential updates
+    const config = getConfig();
 
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--parser' || args[i] === '-p') {
             if (i + 1 < args.length) {
-                parserType = args[i + 1];
+                config.parserType = args[i + 1];
                 i++; // Skip next argument as it's the value
             }
         } else if (args[i] === '--yolo' || args[i] === '-y') {
-            yoloMode = true;
+            config.yoloMode = true;
+        } else if (args[i] === '--disable-containers') {
+            config.container = false;
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }
     }
 
-    const agent: Agent = new Agent(parserType);
-    agent.yoloMode = yoloMode; // Set yolo mode
+    const agent: Agent = new Agent(config);
+
     await agent.init();
 
     console.log('Coding Agent Started');
@@ -44,15 +51,18 @@ async function main() {
     console.log('- "Show me the current directory contents"');
     console.log('');
 
-    if (parserType === 'json') {
+    if (config.parserType === 'json') {
         console.log('Using JSON parser mode');
     } else {
         console.log('Using plain text parser mode');
     }
-    console.log('');
 
-    if (yoloMode) {
+    if (config.yoloMode) {
         console.log('⚠️ YOLO mode enabled: All tools will be allowed without confirmation');
+    }
+
+    if (config.container) {
+        console.log('⚠️ Container mode disabled');
     }
 
     /**
@@ -88,11 +98,18 @@ async function main() {
             console.error('Error:', error.stack);
         }
 
-        rl.close();
         return;
     }
 
-    agent.showUserPrompt();
+    if (isTTY) {
+
+        agent.showUserPrompt();
+    } else {
+        if (!question) {
+            console.log("No question asked, exiting.")
+            process.exit(0);
+        }
+    }
 }
 
 // Handle graceful shutdown

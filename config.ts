@@ -8,39 +8,43 @@ interface ModelConfig {
     model: string;
 }
 
-interface Config {
+export interface Config {
+    yoloMode: boolean;
     models: ModelConfig[];
+    container: boolean; // Add container configuration
+    parserType: string;
 }
 
-function getConfig(): Config {
+const defaultConfig: Config = {
+    models: [
+        {
+            name: 'default',
+            baseUrl: 'https://api.openai.com/v1',
+            apiKey: '',
+            model: 'gpt-4',
+        },
+    ],
+    container: true,
+    parserType: "plain", yoloMode: false,
+}
+
+let config: Config = null;
+export function init(): void {
     const configPath = path.join(process.env.HOME, '.config', 'codingagent.json');
-    console.log(configPath);
     try {
         if (fs.existsSync(configPath)) {
             const configData = fs.readFileSync(configPath, 'utf8');
-            const config = JSON.parse(configData);
-            return config;
+            config = JSON.parse(configData);
+        } else {
+            // Create default configuration
+            config = defaultConfig;
         }
     } catch (error) {
         console.error('Error reading config file:', error.message);
+        config = defaultConfig;
     }
-
-    // Return default configuration if file doesn't exist or has errors
-    return {
-        models: [
-            {
-                name: 'default',
-                baseUrl: 'https://api.openai.com/v1',
-                apiKey: '',
-                model: 'gpt-“4',
-            },
-        ],
-    };
 }
 
-function getDefaultModel(): ModelConfig {
-    const config = getConfig();
-    return config.models[0];
-}
-
-export { getConfig, getDefaultModel };
+// Export the singleton instance
+export const getDefaultModel = (): ModelConfig => config.models[0];
+export const getConfig = (): Config => config;

@@ -12,7 +12,7 @@
     "scripts": {
         "start": "node index.js",
         "fmt": "npx oxfmt@latest",
-        "lint": "npx oxlint@latest",
+        "lint": "npx tsc -p tsconfig.json && npx oxlint@latest",
         "test": "jest"
     },
     "devDependencies": {

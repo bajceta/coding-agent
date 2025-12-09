@@ -1,4 +1,5 @@
 import runCommand from './runCommand.ts';
+import type { ExecuteResult } from '../interfaces.ts';
 
 async function execute(text: string): Promise<ExecuteResult> {
     const result = await runCommand.execute(`ag '${text}'`);
@@ -19,7 +20,7 @@ async function execute(text: string): Promise<ExecuteResult> {
 
 // Export module
 export default {
-    description: 'Finds text in current project',
+    description: 'Greps for text in current project',
     arguments: [{ text: 'text to find' }],
     execute,
 };

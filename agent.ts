@@ -1,5 +1,6 @@
 import LLM from './llm.ts';
 import { systemPrompt } from './systemPrompt.ts';
+import type { Config } from './config.ts';
 import {
     parseToolCalls as parseToolCallsJson,
     setTools as setToolsJson,
@@ -8,16 +9,9 @@ import {
 import { parseToolCalls, setTools, toolPrompt } from './parser.ts';
 import Window from './window.ts';
 import { loadTools } from './toolLoader.ts';
-import type { Tool, Tools, ToolCall } from './interfaces.ts';
+import type { Tool, Tools, ToolCall, ExecuteResult } from './interfaces.ts';
+import { TerminalInputHandler } from './terminalInput.ts'; // Import the handler
 
-// Define types for tool results
-interface ToolResult {
-    success?: boolean;
-    content?: string;
-    error?: string;
-}
-
-// Define types for LLM response
 interface LLMResponse {
     content: string;
     stats?: {
@@ -31,38 +25,39 @@ interface LLMResponse {
 class Agent {
     window: Window;
     llm: LLM;
-    statusBar: any;
     tools: Record<string, Tool>;
     parserType: string;
     parseToolCalls: (content: string) => ToolCall[];
     toolPrompt: (tools: Tools) => string;
     singleShot: boolean;
     messages: Array<{ role: string; content: string }>;
-    yoloMode: boolean;
-
-    constructor(parserType: string = 'plain') {
+    config: Config;
+    inputHandler: TerminalInputHandler;
+ 
+    constructor(config: Config) {
+        this.config = config;
         this.window = new Window();
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
-        this.statusBar = this.window.statusBar;
         this.tools = {};
-        this.parserType = parserType;
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt;
         this.singleShot = false;
         this.messages = [];
-        this.yoloMode = false;
-        if (parserType === 'json') {
+        if (this.config.parserType === 'json') {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
     }
+ 
     async init() {
         await this.loadTools();
         this.messages.push({
             role: 'system',
             content: systemPrompt(this.tools, this.toolPrompt),
         });
-        this.setupReadInput();
+ 
+        this.inputHandler = new TerminalInputHandler(this);
+        this.inputHandler.setup();
     }
 
     async loadTools() {
@@ -85,7 +80,7 @@ class Agent {
     }
 
     processInput(input: string) {
-        if (input.toLowerCase() === '') {
+        if (input.toLowerCase() === 'exit') {
             this.print('Goodbye!');
             process.exit(0);
         }
@@ -110,47 +105,6 @@ class Agent {
 
     showUserPrompt() {
         this.print('\nUser: ');
-    }
-
-    setupReadInput() {
-        process.stdin.setRawMode(true);
-        process.stdin.resume();
-        process.stdin.setEncoding('utf8');
-
-        let buffer = '';
-
-        process.stdin.on('data', (chunk: string) => {
-            const code = chunk.charCodeAt(0);
-
-            if (code === 13) {
-                // ENTER key (CR)
-                this.processInput(buffer);
-                buffer = '';
-            }
-
-            if (code === 10 && chunk === '\n') {
-                // Raw mode still emits LF sometimes, but Enter is CR above (13)
-                // So treat plain LF only as typed text
-                buffer += '\n';
-                this.print('\n');
-                return;
-            }
-
-            if (code === 10 && process.stdin.isRaw) {
-                // Ctrl+J generates LF (10)
-                buffer += '\n';
-                this.print('\n');
-                return;
-            }
-
-            // Normal characters
-            buffer += chunk;
-        });
-
-        process.stdin.on('end', () => {
-            this.print('\nInput ended');
-            console.log('\nInput ended');
-        });
     }
 
     async askQuestion(question: string) {
@@ -178,7 +132,7 @@ class Agent {
             this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
 
             const safeTools = ['readFile'];
-            if (!this.yoloMode && !safeTools.includes(toolName)) {
+            if (!this.config.yoloMode && !safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     this.print('Operation cancelled by user.');
@@ -186,7 +140,7 @@ class Agent {
                 }
             }
             const argsList: string[] = Object.values(args);
-            const result: ToolResult = await tool.execute(...argsList);
+            const result: ExecuteResult = await tool.execute(...argsList);
             if (result.error) {
                 this.print('Tool call error: ' + result.error);
             }
@@ -251,7 +205,7 @@ class Agent {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
                         // Set tool status before execution
-                        this.statusBar.setTool(toolCall.name);
+                        this.window.statusBar.setTool(toolCall.name);
 
                         const result = await this.processToolCall(toolCall);
                         if (result) {
@@ -263,7 +217,7 @@ class Agent {
                         }
 
                         // Clear tool status after execution
-                        this.statusBar.clearTool();
+                        this.window.statusBar.clearTool();
                     }
                 }
             } catch (error) {
@@ -282,7 +236,7 @@ class Agent {
             const lastMessage = this.messages.pop();
             this.print(
                 '\n🛑 Removed last message from conversation: ' +
-                    lastMessage.content.substring(0, 30),
+                lastMessage.content.substring(0, 30),
             );
         }
     }

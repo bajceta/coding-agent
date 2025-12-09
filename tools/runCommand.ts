@@ -1,17 +1,16 @@
 import { exec } from 'child_process';
 import util from 'util';
 import type { ExecuteResult } from '../interfaces.ts';
-
+import { getConfig } from '../config.ts';
 const execPromise = util.promisify(exec);
 
-async function execute(command: string, config?: { useDocker?: boolean }): Promise<ExecuteResult> {
+async function execute(command: string): Promise<ExecuteResult> {
     const cwd = process.cwd();
     console.log('Running command: ' + command);
 
-    const useDocker = config?.useDocker !== false;
 
     try {
-        if (useDocker) {
+        if (getConfig().container) {
             console.log('Running command in Docker');
             const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
             const { stdout } = await execPromise(dockerCommand);
