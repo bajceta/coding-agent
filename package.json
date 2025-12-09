@@ -11,11 +11,12 @@
     },
     "scripts": {
         "start": "node index.js",
-        "fmt": "npx oxfmt@latest",
-        "lint": "npx tsc -p tsconfig.json && npx oxlint@latest",
+        "fmt": "npx --yes oxfmt@latest",
+        "lint": "npx --yes tsc -p tsconfig.json && npx --yes oxlint@latest",
         "test": "jest"
     },
     "devDependencies": {
+        "@types/node": "^24.10.2",
         "jest": "^29.7.0",
         "typescript": "^5.9.3"
     }

@@ -11,13 +11,17 @@ if [[ "$CURRENT_DIR" == "$HOME_DIR" ]]; then
 fi
 
 # Ask for confirmation if not in home directory
-if [[ "$CURRENT_DIR" != "$HOME_DIR" ]]; then
+if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$1" != "--yes-i-am-sure" ]]; then
     read -p "Are you sure you want to run the agent in YOLO mode in $CURRENT_DIR? (y/n): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "Operation cancelled."
         exit 0
     fi
+fi
+
+if [[ "$1" == "--yes-i-am-sure" ]]; then
+    echo "WARNING WARNING WARNING YOLO MODE, NO QUESTIONS ASKED FOR TOOL CALLS"
 fi
 
 # Run the docker command
@@ -27,4 +31,4 @@ docker run -it --rm \
     --user $(id -u):$(id -g) \
     -v $PWD:/workspace \
     -w /workspace \
-    agent-runner:1 /agent/index.ts --yolo $1
+    agent-runner:1 /agent/index.ts --yolo --disable-containers --no-intro

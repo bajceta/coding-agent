@@ -12,16 +12,6 @@ import { loadTools } from './toolLoader.ts';
 import type { Tool, Tools, ToolCall, ExecuteResult } from './interfaces.ts';
 import { TerminalInputHandler } from './terminalInput.ts'; // Import the handler
 
-interface LLMResponse {
-    content: string;
-    stats?: {
-        promptTokens: number;
-        completionTokens: number;
-        totalTokens: number;
-        model: string;
-    };
-}
-
 class Agent {
     window: Window;
     llm: LLM;
@@ -173,11 +163,11 @@ class Agent {
 
         while (hasToolCalls) {
             hasToolCalls = false;
-            let response: LLMResponse;
+            let response;
 
             try {
                 this.print('\n\x1b[32mAgent:\n\x1b[0m');
-                response = await this.llm.streamResponse(
+                response = await this.llm.makeRequest(
                     currentMessages,
                     this.print.bind(this),
                     (chunk: string) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),

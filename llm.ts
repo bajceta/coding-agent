@@ -18,19 +18,9 @@ class LLM {
     stats: Stats;
 
     constructor(onUpdate: (state: any) => void) {
-        console.log(onUpdate);
         this.modelConfig = getDefaultModel();
         this.abortController = null;
         this.stats = new Stats(onUpdate);
-    }
-
-    async streamResponse(
-        messages: Message[],
-        onChunk: (chunk: string) => void,
-        onReasoningChunk: (chunk: string) => void,
-    ): Promise<LLMResponse> {
-        const response = await this.makeRequest(messages, onChunk, onReasoningChunk);
-        return response;
     }
 
     async makeRequest(

@@ -30,11 +30,12 @@ To make the agent easily accessible, add this to your shell configuration file:
 For bash:
 
 ```
-echo "alias agent=$PWD/index.js" >> ~/.bashrc
+echo "alias agent=$PWD/index.ts" >> ~/.bashrc
 ```
 
 For zsh:
 
 ```
-echo "alias agent=$PWD/index.js" >> ~/.zshrc
+echo "alias agent=\"$PWD/index.ts --enable-containers\"" >> ~/.zshrc
+echo "alias yolo=\"$PWD/start-docker.sh --yes-i-am-sure\"" >> ~/.zshrc
 ```

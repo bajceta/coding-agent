@@ -5,6 +5,7 @@ import { init as initConfig, getConfig } from './config.ts'; // Import config si
 
 async function main() {
     initConfig();
+    let intro = true;
     let isTTY = true;
     if (process.stdin.isTTY) {
         process.stdin.setRawMode(true);
@@ -33,6 +34,8 @@ async function main() {
             config.yoloMode = true;
         } else if (args[i] === '--disable-containers') {
             config.container = false;
+        } else if (args[i] === '--no-intro') {
+            intro = false;
         } else if (args[i] === '--enable-containers') {
             config.container = true;
         } else if (question === undefined) {
@@ -43,15 +46,16 @@ async function main() {
     const agent: Agent = new Agent(config);
 
     await agent.init();
-
-    console.log('Coding Agent Started');
-    console.log('Press ESC twice to stop requests');
-    console.log('Type "exit" to quit\n');
-    console.log('Try asking the agent to use tools like:');
-    console.log('- "Read the contents of /etc/os-release"');
-    console.log('- "Create a new file called test.txt with content Hello World"');
-    console.log('- "Show me the current directory contents"');
-    console.log('');
+    if (intro) {
+        console.log('Coding Agent Started');
+        console.log('Press ESC twice to stop requests');
+        console.log('Type "exit" to quit\n');
+        console.log('Try asking the agent to use tools like:');
+        console.log('- "Read the contents of /etc/os-release"');
+        console.log('- "Create a new file called test.txt with content Hello World"');
+        console.log('- "Show me the current directory contents"');
+        console.log('');
+    }
 
     if (config.parserType === 'json') {
         console.log('Using JSON parser mode');

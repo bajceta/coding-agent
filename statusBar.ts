@@ -20,10 +20,10 @@ interface UpdateCallback {
  */
 const RESET = '\x1b[0m';
 const GREEN = '\x1b[32m'; // Green for tokens count
-const BLUE = '\x1b[34m';  // Blue for tokens per second (TPS)
+const BLUE = '\x1b[34m'; // Blue for tokens per second (TPS)
 const YELLOW = '\x1b[33m'; // Yellow for currently running tools
-const CYAN = '\x1b[36m';   // Cyan for model information
-const RED = '\x1b[31m';    // Red for error messages
+const CYAN = '\x1b[36m'; // Cyan for model information
+const RED = '\x1b[31m'; // Red for error messages
 const MAGENTA = '\x1b[35m'; // Magenta for other status messages
 
 class StatusBar {
@@ -78,7 +78,7 @@ class StatusBar {
 
     /**
      * Get formatted status text with colors
-     * 
+     *
      * This method formats the status bar text with appropriate colors:
      * - Tokens count: Green
      * - Tokens per second (TPS): Blue
