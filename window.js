@@ -1,17 +1,48 @@
+const StatusBar = require('./statusBar');
+
 class Window {
     constructor() {
         this.columnPos = 0;
+        this.statusText = '';
+        this.statusBar = new StatusBar();
+    }
+
+    // Set status text (called by OutputManager)
+    setStatus(text) {
+        this.statusText = text;
+        this.renderStatusBar();
+    }
+
+    // Render status bar (called internally)
+    renderStatusBar() {
+        const rows = process.stdout.rows;
+        const statusRow = rows;
+        const columns = process.stdout.columns;
+
+        // Move to status row, clear line, write text
+        process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
+        process.stdout.write(this.statusText);
+        // Pad with spaces to ensure full row is cleared
+        const padding = ' '.repeat(columns - this.statusText.length);
+        process.stdout.write(padding);
+    }
+
+    // Update status bar with new data from StatusBar
+    updateStatusBar() {
+        const statusText = this.statusBar.getText();
+        this.setStatus(statusText);
     }
 
     newline() {
         const rows = process.stdout.rows;
-        const statusRow = rows; // Last row (status bar)
-        const textAreaBottom = rows - 1; // Row above status bar
-        //Clean status bar
+        const statusRow = rows;
+        const textAreaBottom = rows - 1;
+
+        // Clear status bar
         process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
-        // Shift screen up to make room for new text
+        // Shift screen up
         process.stdout.write('\x1b[1S');
-        // Move cursor to bottom of text area (above status bar)
+        // Move cursor to bottom of text area
         process.stdout.write(`\x1b[${textAreaBottom};0H`);
         this.columnPos = 0;
     }
@@ -36,6 +67,11 @@ class Window {
         } else {
             this.printAddToLine(text);
         }
+    }
+
+    // Expose StatusBar for external updates
+    getStatusBar() {
+        return this.statusBar;
     }
 }
 

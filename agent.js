@@ -173,6 +173,9 @@ class Agent {
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
+                        // Set tool status before execution
+                        this.outputManager.setTool(toolCall.name);
+
                         const result = await this.processToolCall(toolCall, currentMessages);
                         if (result) {
                             const msg = {
@@ -181,12 +184,26 @@ class Agent {
                             };
                             currentMessages.push(msg);
                         }
+
+                        // Clear tool status after execution
+                        this.outputManager.clearTool();
                     }
                 }
+        // Update status bar with token stats after response
+        if (response && response.stats) {
+            const tokenStats = response.stats;
+            this.outputManager.updateStatusBar(
+                tokenStats.prompt_tokens,
+                tokenStats.completion_tokens,
+                tokenStats.total_tokens,
+                this.llm.modelConfig.model
+            );
+        }
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`, error);
             }
         }
+
 
         if (!this.singleShot) {
             this.showUserPrompt();
