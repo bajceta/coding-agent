@@ -11,10 +11,9 @@ export interface ToolCall {
     name: string;
     arguments: Record<string, string>;
 }
- 
+
 export interface ExecuteResult {
     success: boolean;
     content: string | null;
     error: string | null;
 }
- 

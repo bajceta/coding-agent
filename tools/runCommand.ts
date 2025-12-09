@@ -14,7 +14,7 @@ async function execute(command: string, config?: { useDocker?: boolean }): Promi
         if (useDocker) {
             console.log('Running command in Docker');
             const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
-            const { stdout, stderr } = await execPromise(dockerCommand);
+            const { stdout } = await execPromise(dockerCommand);
             return {
                 success: true,
                 content: stdout,
@@ -22,7 +22,7 @@ async function execute(command: string, config?: { useDocker?: boolean }): Promi
             };
         } else {
             console.log('Running command locally');
-            const { stdout, stderr } = await execPromise(command);
+            const { stdout } = await execPromise(command);
             return {
                 success: true,
                 content: stdout,

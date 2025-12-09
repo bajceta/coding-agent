@@ -41,9 +41,9 @@ function parseToolCalls(responseText: string): ToolCall[] {
         try {
             const tool = tools[toolCall.name];
             if (tool && tool.arguments) {
-                for (const [name, description] of Object.entries(tool.arguments)) {
+                for (const [name] of Object.entries(tool.arguments)) {
                     if (argsObj[name] !== undefined) {
-                        toolCall.arguments[name]=argsObj[name];
+                        toolCall.arguments[name] = argsObj[name];
                     }
                 }
             }

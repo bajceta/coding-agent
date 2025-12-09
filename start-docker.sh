@@ -27,4 +27,4 @@ docker run -it --rm \
     --user $(id -u):$(id -g) \
     -v $PWD:/workspace \
     -w /workspace \
-    agent-runner:1 /agent/index.js --yolo $1
+    agent-runner:1 /agent/index.ts --yolo $1

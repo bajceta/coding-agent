@@ -100,9 +100,7 @@ ${Object.values(tools).map(toolDefinitionToText).join('\n')}
 
 function toolDefinitionToText(def: Tool) {
     const args = [];
-    Object.entries(def.arguments).forEach(([name, value]) =>
-        args.push(name + ':' + value)
-   );
+    Object.entries(def.arguments).forEach(([name, value]) => args.push(name + ':' + value));
 
     const result = `
 tool_name: ${def.name}

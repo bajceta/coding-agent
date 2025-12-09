@@ -68,7 +68,7 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        console.log(this.tools)
+        console.log(this.tools);
         setTools(this.tools);
         setToolsJson(this.tools);
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
@@ -118,13 +118,13 @@ class Agent {
         process.stdin.setEncoding('utf8');
 
         let buffer = '';
-        const agent = this;
+
         process.stdin.on('data', (chunk: string) => {
             const code = chunk.charCodeAt(0);
 
             if (code === 13) {
                 // ENTER key (CR)
-                agent.processInput(buffer);
+                this.processInput(buffer);
                 buffer = '';
             }
 
@@ -280,7 +280,10 @@ class Agent {
         this.llm.stopRequest();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            this.print('\n🛑 Removed last message from conversation: ' + lastMessage.content.substring(0,30));
+            this.print(
+                '\n🛑 Removed last message from conversation: ' +
+                    lastMessage.content.substring(0, 30),
+            );
         }
     }
 }

@@ -40,9 +40,7 @@ function getConfig(): Config {
 
 function getDefaultModel(): ModelConfig {
     const config = getConfig();
-    return (
-        config.models[0]
-    );
+    return config.models[0];
 }
 
 export { getConfig, getDefaultModel };
