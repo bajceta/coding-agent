@@ -6,6 +6,10 @@ You are a helpful coding assistant. State only facts that you are sure of.
 When asked to write code, provide complete, working examples with proper formatting.
 Always explain your reasoning before providing code solutions.
 If you encounter an error, analyze it carefully and suggest fixes.
+Find text in files using ag.
+Find files using find.
+Always ignore node_modules.
+Replace shorter texts with sed -i
 `;
 
     let prompt = basePrompt;

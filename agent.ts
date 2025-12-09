@@ -102,7 +102,7 @@ class Agent {
     }
 
     showUserPrompt() {
-        this.print('\nUser: ');
+        this.print('\n\x1b[34mUser: \x1b[0m');
     }
 
     async askQuestion(question: string) {
@@ -176,7 +176,7 @@ class Agent {
             let response: LLMResponse;
 
             try {
-                this.print('\nAgent:\n');
+                this.print('\n\x1b[32mAgent:\n\x1b[0m');
                 response = await this.llm.streamResponse(
                     currentMessages,
                     this.print.bind(this),
@@ -194,8 +194,9 @@ class Agent {
                     // Update status bar with token stats using updateState
                     this.window.statusBar.updateState({
                         promptTokens: stats.promptTokens,
+                        promptCachedTokens: stats.promptCachedTokens,
                         completionTokens: stats.completionTokens,
-                        totalTokens: stats.totalTokens,
+                        totalTokens: stats.completionTokens,
                         model: this.llm.modelConfig.model,
                     });
                 }

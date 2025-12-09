@@ -33,6 +33,8 @@ async function main() {
             config.yoloMode = true;
         } else if (args[i] === '--disable-containers') {
             config.container = false;
+        } else if (args[i] === '--enable-containers') {
+            config.container = true;
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }
@@ -62,6 +64,8 @@ async function main() {
     }
 
     if (config.container) {
+        console.log('⚠️ Container mode enabled');
+    } else {
         console.log('⚠️ Container mode disabled');
     }
 
