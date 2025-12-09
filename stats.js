@@ -5,9 +5,9 @@ class Stats {
             evalTime: 0,
             promptProcessingPerSecond: 0,
             tokenGenerationPerSecond: 0,
-        promptTokens : 0,
-        promptCachedTokens : 0,
-        completionTokens : 0,
+            promptTokens: 0,
+            promptCachedTokens: 0,
+            completionTokens: 0,
         };
         this.onTPS = onTPS;
 
@@ -23,6 +23,7 @@ class Stats {
 
     start() {
         this.startTime = Date.now();
+        this.totalTokens = 0;
         this.firstTokenTime = null;
     }
 
@@ -56,7 +57,7 @@ class Stats {
         if (this.lastDisplayTime === null || currentTime - this.lastDisplayTime > 50) {
             this.lastDisplayTime = currentTime;
             this.lastTokensPerSecond = tokensPerSecond;
-            this.displayTokensPerSecond();
+            this.onTPS(this.lastTokensPerSecond);
         }
     }
 
@@ -70,22 +71,22 @@ class Stats {
         const promptProcessingTime = this.firstTokenTime - this.startTime;
         if (promptProcessingTime > 0) {
             this.stats.promptProcessingPerSecond =
-                (this.stats.promptTokens - this.stats.promptCachedTokens) / (promptProcessingTime / 1000);
+                (this.stats.promptTokens - this.stats.promptCachedTokens) /
+                (promptProcessingTime / 1000);
         } else {
             this.stats.promptProcessingPerSecond = 0;
         }
     }
 
-    displayTokensPerSecond() {
-        this.onTPS(this.lastTokensPerSecond);
-    }
 
     displayStats() {
         console.log(`\n📊 Final Stats:`);
         console.log(`- Time to first token: ${this.stats.timeToFirstToken}ms`);
         console.log(`- Eval time: ${this.stats.evalTime}ms`);
 
-        console.log(`- Prompt tokens: ${this.stats.promptTokens} (${this.stats.promptCachedTokens}) `);
+        console.log(
+            `- Prompt tokens: ${this.stats.promptTokens} (${this.stats.promptCachedTokens}) `,
+        );
         console.log(`- Generated tokens: ${this.stats.completionTokens}`);
         console.log(
             `- Prompt processing: ${this.stats.promptProcessingPerSecond.toFixed(2)} tokens/sec`,

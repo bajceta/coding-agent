@@ -13,7 +13,7 @@ const safeTools = ['readFile'];
 const ToolLoader = require('./toolLoader');
 
 class Agent {
-    constructor(rl, parserType = 'plain') {
+    constructor(parserType = 'plain') {
         this.window = new Window();
         this.llm = new LLM(this.window.statusBar.setTPS.bind(this.window.statusBar));
         this.statusBar = this.window.statusBar;
@@ -22,7 +22,6 @@ class Agent {
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt;
         this.loadTools();
-        this.readline = rl;
         this.singleShot = false;
         this.messages = [];
         this.yoloMode = false;
@@ -36,6 +35,7 @@ class Agent {
             role: 'system',
             content: systemPrompt(this.tools, this.toolPrompt),
         });
+        this.setupReadInput();
     }
 
     loadTools() {
@@ -48,41 +48,85 @@ class Agent {
 
     async askForConfirmation(toolName, args) {
         const result = await new Promise((resolve) => {
-            this.readline.question(
-                `Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `,
-                (answer) => {
-                    resolve(/^y(es)?$/i.test(answer));
-                },
-            );
+            this.print(`Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `);
+            process.stdin.once('data', (answer) => {
+                const response = answer.trim();
+                resolve(/^y(es)?$/i.test(response));
+            });
         });
         this.print('\n');
         return result;
     }
 
-    async showUserPrompt() {
-        this.readline.question('> ', async (input) => {
-            if (input.toLowerCase() === 'exit') {
-                this.print('Goodbye!');
-                this.readline.close();
+    processInput(input) {
+        //this.print("This does not print?");
+        if (input.toLowerCase() === '') {
+            this.print('Goodbye!');
+            process.exit(0);
+        }
+
+        this.messages.push({
+            role: 'user',
+            content: input,
+        });
+
+        try {
+            this.print('\nAgent: ');
+            this.run();
+        } catch (error) {
+            console.error('Error:', error.message);
+            console.error('Error:', error.stack);
+            this.messages.push({
+                role: 'assistant',
+                content: `Error: ${error.message}`,
+            });
+        }
+    }
+
+    showUserPrompt() {
+        this.print('\nUser: ');
+    }
+
+    setupReadInput() {
+        process.stdin.setRawMode(true);
+        process.stdin.resume();
+        process.stdin.setEncoding('utf8');
+
+        let buffer = '';
+        let agent = this;
+        process.stdin.on('data', (chunk) => {
+            const code = chunk.charCodeAt(0);
+
+            if (code === 13) {
+                // ENTER key (CR)
+                //process.stdin.setRawMode(false);
+                agent.processInput(buffer);
+                buffer = '';
+            }
+
+            if (code === 10 && chunk === '\n') {
+                // Raw mode still emits LF sometimes, but Enter is CR above (13)
+                // So treat plain LF only as typed text
+                buffer += '\n';
+                this.print('\n');
                 return;
             }
 
-            this.messages.push({
-                role: 'user',
-                content: input,
-            });
-
-            try {
-                this.print('\nAgent: ');
-                await this.run();
-            } catch (error) {
-                console.error('Error:', error.message);
-                console.error('Error:', error.stack);
-                this.messages.push({
-                    role: 'assistant',
-                    content: `Error: ${error.message}`,
-                });
+            if (code === 10 && process.stdin.isRaw) {
+                // Ctrl+J generates LF (10)
+                buffer += '\n';
+                this.print('\n');
+                return;
             }
+
+            // Normal characters
+            buffer += chunk;
+            //this.print(chunk);
+        });
+
+        process.stdin.on('end', () => {
+            this.print('\nInput ended');
+            console.log('\nInput ended');
         });
     }
 
