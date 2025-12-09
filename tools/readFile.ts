@@ -1,11 +1,18 @@
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-async function execute(_path) {
+interface ExecuteResult {
+    success: boolean;
+    content: string | null;
+    error: string | null;
+}
+
+async function execute(_path: string): Promise<ExecuteResult> {
     try {
         const cwd = process.cwd();
         const resolvedPath = path.resolve(_path);
 
+        // Check if path is within current working directory
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
@@ -14,10 +21,11 @@ async function execute(_path) {
             };
         }
 
-        const content = await fs.readFile(resolvedPath, 'utf8');
+        // Read file content
+        const content = await fs.promises.readFile(resolvedPath, 'utf8');
         return {
             success: true,
-            content: content,
+            content,
             error: null,
         };
     } catch (error) {
@@ -29,7 +37,8 @@ async function execute(_path) {
     }
 }
 
-module.exports = {
+// Export module
+export default {
     description: 'Read the contents of a file',
     arguments: [{ path: 'path to the file to read' }],
     execute,

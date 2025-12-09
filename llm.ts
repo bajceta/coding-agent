@@ -1,20 +1,43 @@
-const { getDefaultModel } = require('./config');
-const Stats = require('./stats');
+import { getDefaultModel } from './config.ts';
+import Stats from './stats.ts';
+
+interface Message {
+    role: string;
+    content: string;
+}
+
+interface LLMResponse {
+    content: string;
+    reasoning: string;
+    stats: any;
+}
 
 class LLM {
-    constructor(onUpdate) {
+    modelConfig: any;
+    abortController: AbortController | null;
+    stats: Stats;
+
+    constructor(onUpdate: (state: any) => void) {
         console.log(onUpdate);
         this.modelConfig = getDefaultModel();
         this.abortController = null;
         this.stats = new Stats(onUpdate);
     }
 
-    async streamResponse(messages, onChunk, onReasoningChunk) {
+    async streamResponse(
+        messages: Message[],
+        onChunk: (chunk: string) => void,
+        onReasoningChunk: (chunk: string) => void,
+    ): Promise<LLMResponse> {
         const response = await this.makeRequest(messages, onChunk, onReasoningChunk);
         return response;
     }
 
-    async makeRequest(messages, onChunk, onReasoningChunk) {
+    async makeRequest(
+        messages: Message[],
+        onChunk: (chunk: string) => void,
+        onReasoningChunk: (chunk: string) => void,
+    ): Promise<LLMResponse> {
         const controller = new AbortController();
         this.abortController = controller;
 
@@ -105,4 +128,4 @@ class LLM {
     }
 }
 
-module.exports = LLM;
+export default LLM;

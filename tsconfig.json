@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "noEmit": true, // Optional - see note below
+        "target": "esnext",
+        "module": "nodenext",
+        "rewriteRelativeImportExtensions": true,
+        "erasableSyntaxOnly": true,
+        "verbatimModuleSyntax": true,
+    },
+    "include": [
+        "src",
+        "index.ts",
+        "agent.ts",
+        "config.ts",
+        "llm.ts",
+        "parser-json.ts",
+        "parser.ts",
+        "stats.ts",
+        "statusBar.ts",
+        "systemPrompt.ts",
+        "toolLoader.ts",
+        "tools",
+        "window.ts",
+    ],
+    "exclude": ["node_modules", "dist", "test", "**/*.test.ts"],
+}

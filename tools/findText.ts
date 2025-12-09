@@ -1,6 +1,6 @@
-const runCommand = require('./runCommand');
+import runCommand from './runCommand.ts';
 
-async function findText(text) {
+async function execute(text: string): Promise<ExecuteResult> {
     const result = await runCommand.execute(`ag '${text}'`);
     if (result.success) {
         return {
@@ -17,8 +17,9 @@ async function findText(text) {
     }
 }
 
-module.exports = {
+// Export module
+export default {
     description: 'Finds text in current project',
     arguments: [{ text: 'text to find' }],
-    execute: findText,
+    execute,
 };

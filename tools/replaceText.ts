@@ -1,11 +1,13 @@
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import type { ExecuteResult } from '../interfaces.ts';
 
-async function execute(_path, oldText, newText) {
+async function execute(_path: string, oldText: string, newText: string): Promise<ExecuteResult> {
     try {
         const cwd = process.cwd();
         const resolvedPath = path.resolve(_path);
 
+        // Check if path is within current working directory
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
@@ -14,7 +16,7 @@ async function execute(_path, oldText, newText) {
             };
         }
 
-        const content = await fs.readFile(resolvedPath, 'utf8');
+        const content = await fs.promises.readFile(resolvedPath, 'utf8');
 
         // Check if oldText exists in the content
         if (!content.includes(oldText)) {
@@ -26,7 +28,7 @@ async function execute(_path, oldText, newText) {
         }
 
         const newContent = content.split(oldText).join(newText);
-        await fs.writeFile(resolvedPath, newContent, 'utf8');
+        await fs.promises.writeFile(resolvedPath, newContent, 'utf8');
 
         return {
             success: true,
@@ -42,7 +44,8 @@ async function execute(_path, oldText, newText) {
     }
 }
 
-module.exports = {
+// Export module
+export default {
     description: 'Replace partial text in a file. For complete file use writeFile instead.',
     arguments: [
         { path: 'path to the file to modify' },

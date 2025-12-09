@@ -1,7 +1,18 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-function getConfig() {
+interface ModelConfig {
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+}
+
+interface Config {
+    models: ModelConfig[];
+}
+
+function getConfig(): Config {
     const configPath = path.join(process.env.HOME, '.config', 'codingagent.json');
     console.log(configPath);
     try {
@@ -21,26 +32,17 @@ function getConfig() {
                 name: 'default',
                 baseUrl: 'https://api.openai.com/v1',
                 apiKey: '',
-                model: 'gpt-4',
+                model: 'gpt-“4',
             },
         ],
     };
 }
 
-function getDefaultModel() {
+function getDefaultModel(): ModelConfig {
     const config = getConfig();
     return (
-        config.models[0] ||
-        config.models.default || {
-            name: 'default',
-            baseUrl: 'https://api.openai.com/v1',
-            apiKey: '',
-            model: 'gpt-4',
-        }
+        config.models[0]
     );
 }
 
-module.exports = {
-    getConfig,
-    getDefaultModel,
-};
+export { getConfig, getDefaultModel };

@@ -1,5 +1,25 @@
+interface StatusBarState {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    tokensPerSecond: number;
+    lastTokenTime: number | null;
+    currentlyRunningTool: string | null;
+    model: string | null;
+    status: string;
+}
+
+interface UpdateCallback {
+    (text: string): void;
+}
+
 class StatusBar {
-    constructor(onUpdate) {
+    state: StatusBarState;
+    lastUpdate: number;
+    tokenCount: number;
+    onUpdate: UpdateCallback;
+
+    constructor(onUpdate: UpdateCallback) {
         this.state = {
             promptTokens: 0,
             completionTokens: 0,
@@ -16,22 +36,22 @@ class StatusBar {
     }
 
     // Set currently running tool
-    setTool(toolName) {
+    setTool(toolName: string): void {
         this.state.currentlyRunningTool = toolName;
     }
 
     // Clear tool status
-    clearTool() {
+    clearTool(): void {
         this.state.currentlyRunningTool = null;
     }
 
     // Set general status message
-    setStatus(status) {
+    setStatus(status: string): void {
         this.state.status = status;
     }
 
     // Update state with info object
-    updateState(info) {
+    updateState(info: Partial<StatusBarState>): void {
         // Copy all properties from info to this.state
         for (const key in info) {
             if (info.hasOwnProperty(key)) {
@@ -43,7 +63,7 @@ class StatusBar {
     }
 
     // Get formatted status text
-    getText() {
+    getText(): string {
         const {
             promptTokens,
             completionTokens,
@@ -76,4 +96,4 @@ class StatusBar {
     }
 }
 
-module.exports = StatusBar;
+export default StatusBar;

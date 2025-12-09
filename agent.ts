@@ -1,17 +1,46 @@
-const LLM = require('./llm');
-const { parseToolCalls, setTools, toolPrompt } = require('./parser');
-const { systemPrompt } = require('./systemPrompt');
-const {
-    parseToolCalls: parseToolCallsJson,
-    setTools: setToolsJson,
-    toolPrompt: toolPromptJson,
-} = require('./parser-json');
-const Window = require('./window');
-const safeTools = ['readFile'];
-const ToolLoader = require('./toolLoader');
+import LLM from './llm.ts';
+import { systemPrompt } from './systemPrompt.ts';
+import {
+    parseToolCalls as parseToolCallsJson,
+    setTools as setToolsJson,
+    toolPrompt as toolPromptJson,
+} from './parser-json.ts';
+import { parseToolCalls, setTools, toolPrompt } from './parser.ts';
+import Window from './window.ts';
+import { loadTools } from './toolLoader.ts';
+import type { Tool, Tools, ToolCall } from './interfaces.ts';
+
+// Define types for tool results
+interface ToolResult {
+    success?: boolean;
+    content?: string;
+    error?: string;
+}
+
+// Define types for LLM response
+interface LLMResponse {
+    content: string;
+    stats?: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+        model: string;
+    };
+}
 
 class Agent {
-    constructor(parserType = 'plain') {
+    window: Window;
+    llm: LLM;
+    statusBar: any;
+    tools: Record<string, Tool>;
+    parserType: string;
+    parseToolCalls: (content: string) => ToolCall[];
+    toolPrompt: (tools: Tools) => string;
+    singleShot: boolean;
+    messages: Array<{ role: string; content: string }>;
+    yoloMode: boolean;
+
+    constructor(parserType: string = 'plain') {
         this.window = new Window();
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.statusBar = this.window.statusBar;
@@ -19,16 +48,16 @@ class Agent {
         this.parserType = parserType;
         this.parseToolCalls = parseToolCalls;
         this.toolPrompt = toolPrompt;
-        this.loadTools();
         this.singleShot = false;
         this.messages = [];
         this.yoloMode = false;
-
         if (parserType === 'json') {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
-
+    }
+    async init() {
+        await this.loadTools();
         this.messages.push({
             role: 'system',
             content: systemPrompt(this.tools, this.toolPrompt),
@@ -36,28 +65,26 @@ class Agent {
         this.setupReadInput();
     }
 
-    loadTools() {
-        const tools = ToolLoader.loadTools();
+    async loadTools() {
+        const tools = await loadTools();
         this.tools = tools;
+        console.log(this.tools)
         setTools(this.tools);
         setToolsJson(this.tools);
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
-    async askForConfirmation(toolName, args) {
-        const result = await new Promise((resolve) => {
+    async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
+        return new Promise((resolve) => {
             this.print(`Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `);
-            process.stdin.once('data', (answer) => {
+            process.stdin.once('data', (answer: string) => {
                 const response = answer.trim();
                 resolve(/^y(es)?$/i.test(response));
             });
         });
-        this.print('\n');
-        return result;
     }
 
-    processInput(input) {
-        //this.print("This does not print?");
+    processInput(input: string) {
         if (input.toLowerCase() === '') {
             this.print('Goodbye!');
             process.exit(0);
@@ -91,13 +118,12 @@ class Agent {
         process.stdin.setEncoding('utf8');
 
         let buffer = '';
-        let agent = this;
-        process.stdin.on('data', (chunk) => {
+        const agent = this;
+        process.stdin.on('data', (chunk: string) => {
             const code = chunk.charCodeAt(0);
 
             if (code === 13) {
                 // ENTER key (CR)
-                //process.stdin.setRawMode(false);
                 agent.processInput(buffer);
                 buffer = '';
             }
@@ -119,7 +145,6 @@ class Agent {
 
             // Normal characters
             buffer += chunk;
-            //this.print(chunk);
         });
 
         process.stdin.on('end', () => {
@@ -128,7 +153,7 @@ class Agent {
         });
     }
 
-    async askQuestion(question) {
+    async askQuestion(question: string) {
         this.singleShot = true;
         this.messages.push({
             role: 'user',
@@ -138,7 +163,7 @@ class Agent {
         await this.run();
     }
 
-    async processToolCall(toolcall) {
+    async processToolCall(toolcall: ToolCall): Promise<string> {
         try {
             const toolName = toolcall.name;
             const args = toolcall.arguments || {};
@@ -147,9 +172,12 @@ class Agent {
                 throw new Error(`Tool ${toolName} not found`);
             }
 
-            const showArgs = args.map((arg) => arg.substring(0, 20)).join(' ');
+            const showArgs = Object.values(args)
+                .map((arg) => arg.substring(0, 20))
+                .join(' ');
             this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
 
+            const safeTools = ['readFile'];
             if (!this.yoloMode && !safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
@@ -157,8 +185,8 @@ class Agent {
                     return `Tool ${toolName} rejected by user`;
                 }
             }
-
-            const result = await tool.execute(...args);
+            const argsList: string[] = Object.values(args);
+            const result: ToolResult = await tool.execute(...argsList);
             if (result.error) {
                 this.print('Tool call error: ' + result.error);
             }
@@ -182,7 +210,7 @@ class Agent {
         }
     }
 
-    print(chunk) {
+    print(chunk: string) {
         this.window.print(chunk);
     }
 
@@ -192,13 +220,13 @@ class Agent {
 
         while (hasToolCalls) {
             hasToolCalls = false;
-            let response;
+            let response: LLMResponse;
 
             try {
                 response = await this.llm.streamResponse(
                     currentMessages,
                     this.print.bind(this),
-                    (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
+                    (chunk: string) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
                 );
 
                 this.print('\n');
@@ -207,7 +235,6 @@ class Agent {
                     content: response.content,
                 });
 
-                //this.print(response)
                 if (response && response.stats) {
                     const stats = response.stats;
                     // Update status bar with token stats using updateState
@@ -226,7 +253,7 @@ class Agent {
                         // Set tool status before execution
                         this.statusBar.setTool(toolCall.name);
 
-                        const result = await this.processToolCall(toolCall, currentMessages);
+                        const result = await this.processToolCall(toolCall);
                         if (result) {
                             const msg = {
                                 role: 'tool',
@@ -239,7 +266,6 @@ class Agent {
                         this.statusBar.clearTool();
                     }
                 }
-                // Update status bar with token stats after response
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`, error);
             }
@@ -254,9 +280,9 @@ class Agent {
         this.llm.stopRequest();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            this.print('\n🛑 Removed last message from conversation:', lastMessage.content);
+            this.print('\n🛑 Removed last message from conversation: ' + lastMessage.content.substring(0,30));
         }
     }
 }
 
-module.exports = Agent;
+export default Agent;

@@ -1,6 +1,10 @@
-const StatusBar = require('./statusBar');
+import StatusBar from './statusBar.ts';
 
 class Window {
+    columnPos: number;
+    statusText: string;
+    statusBar: StatusBar;
+
     constructor() {
         this.columnPos = 0;
         this.statusText = '';
@@ -8,7 +12,7 @@ class Window {
     }
 
     // Render status bar (called internally)
-    renderStatusBar() {
+    renderStatusBar(): void {
         const rows = process.stdout.rows;
 
         // Move to status row, clear line, write text
@@ -18,12 +22,13 @@ class Window {
         //process.stdout.write(`Tokens/s: ${this.lastTokensPerSecond.toFixed(2)}`);
         process.stdout.write('\x1b[u'); // Restore cursor position
     }
-    setStatus(text) {
+
+    setStatus(text: string): void {
         this.statusText = text;
         this.renderStatusBar();
     }
 
-    newline() {
+    newline(): void {
         const rows = process.stdout.rows;
         const statusRow = rows;
         const textAreaBottom = rows - 1;
@@ -38,7 +43,7 @@ class Window {
         this.renderStatusBar();
     }
 
-    printAddToLine(chunk) {
+    printAddToLine(chunk: string): void {
         const columns = process.stdout.columns;
         if (this.columnPos + chunk.length > columns) {
             this.newline();
@@ -47,10 +52,10 @@ class Window {
         this.columnPos += chunk.length;
     }
 
-    print(text) {
+    print(text: string): void {
         if (text.includes('\n')) {
             const lines = text.split('\n');
-            this.printAddToLine(lines.shift());
+            this.printAddToLine(lines.shift() || '');
             for (const line of lines) {
                 this.newline();
                 this.printAddToLine(line);
@@ -61,9 +66,9 @@ class Window {
     }
 
     // Expose StatusBar for external updates
-    getStatusBar() {
+    getStatusBar(): StatusBar {
         return this.statusBar;
     }
 }
 
-module.exports = Window;
+export default Window;

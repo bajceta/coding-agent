@@ -1,11 +1,13 @@
-const fs = require('fs').promises;
-const path = require('path');
-
-async function execute(_path, content) {
+import fs from 'fs';
+import path from 'path';
+import type { ExecuteResult } from '../interfaces.ts'
+ 
+async function execute(_path: string, content: string): Promise<ExecuteResult> {
     try {
         const cwd = process.cwd();
         const resolvedPath = path.resolve(_path);
-
+ 
+        // Check if path is within current working directory
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
@@ -13,14 +15,12 @@ async function execute(_path, content) {
                 error: 'Path must be within the current working directory',
             };
         }
-
-        const dir = path.dirname(resolvedPath);
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(resolvedPath, content, 'utf8');
-
+ 
+        // Write file content
+        await fs.promises.writeFile(resolvedPath, content, 'utf8');
         return {
             success: true,
-            content: `Successfully wrote to ${resolvedPath}`,
+            content: null,
             error: null,
         };
     } catch (error) {
@@ -31,12 +31,13 @@ async function execute(_path, content) {
         };
     }
 }
-
-module.exports = {
-    description: 'Write content to a file.',
+ 
+// Export module
+export default {
+    description: 'Write content to a file',
     arguments: [
         { path: 'path to the file to write' },
-        { content: 'contents of the file to write' },
+        { content: 'content to write to the file' }
     ],
     execute,
 };

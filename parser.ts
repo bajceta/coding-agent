@@ -1,6 +1,8 @@
-let tools = [];
+import type { Tool, ToolCall, Tools } from './interfaces.ts';
 
-function extractToolCallRaw(responseText) {
+let tools: Tools = {};
+
+function extractToolCallRaw(responseText): { name: string; arguments: string }[] {
     const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g;
     const toolCalls = [];
     let match;
@@ -14,7 +16,7 @@ function extractToolCallRaw(responseText) {
     return toolCalls;
 }
 
-function extractArgs(rawArgs) {
+function extractArgs(rawArgs): { name: string; value: string }[] {
     const argumentsRegex = /(\w+.):([\s\S]*?)ENDARG/g;
     const args = [];
     let match;
@@ -28,7 +30,7 @@ function extractArgs(rawArgs) {
     return args;
 }
 
-function parseToolCalls(responseText) {
+function parseToolCalls(responseText): ToolCall[] {
     const toolCalls = [];
     const rawCalls = extractToolCallRaw(responseText);
     for (const raw of rawCalls) {
@@ -39,7 +41,7 @@ function parseToolCalls(responseText) {
         };
         const tool = tools[toolCall.name];
         if (tool) {
-            for (var i = 0; i < tool.arguments.length; i++) {
+            for (var i = 0; i < Object.keys(tool.arguments).length; i++) {
                 toolCall.arguments.push(args[i].value);
             }
         } else {
@@ -54,22 +56,7 @@ function setTools(_tools) {
     tools = _tools;
 }
 
-function getToolDefinitions(tools) {
-    const definitions = [];
-    for (const [name, tool] of Object.entries(tools)) {
-        if (tool.arguments && tool.description) {
-            definitions.push({
-                name: tool.name || name,
-                description: tool.description,
-                arguments: tool.arguments,
-            });
-        }
-    }
-    return definitions;
-}
-
-function toolPrompt(tools) {
-    const toolDefinitions = getToolDefinitions(tools);
+function toolPrompt(tools: Tools) {
     return `
 When you need to use tools, respond using this format:
 tool_call: toolName
@@ -107,16 +94,15 @@ helloWorld();ENDARG
 end_tool_call
 
 You have access to following tools:
-${toolDefinitions.map(toolDefinitionToText).join('\n')}
+${Object.values(tools).map(toolDefinitionToText).join('\n')}
 `;
 }
 
-function toolDefinitionToText(def) {
+function toolDefinitionToText(def: Tool) {
     const args = [];
-    def.arguments.forEach((arg) => {
-        const entries = Object.entries(arg);
-        args.push(entries[0][0] + ':' + entries[0][1]);
-    });
+    Object.entries(def.arguments).forEach(([name, value]) =>
+        args.push(name + ':' + value)
+   );
 
     const result = `
 tool_name: ${def.name}
@@ -127,4 +113,4 @@ ${args.join('\n')}
     return result;
 }
 
-module.exports = { setTools, extractToolCallRaw, extractArgs, parseToolCalls, toolPrompt };
+export { setTools, extractToolCallRaw, parseToolCalls, toolPrompt };

@@ -1,5 +1,28 @@
+interface StatsData {
+    timeToFirstToken: number | null;
+    evalTime: number;
+    promptProcessingPerSecond: number;
+    tokenGenerationPerSecond: number;
+    promptTokens: number;
+    promptCachedTokens: number;
+    completionTokens: number;
+}
+
+interface UpdateCallback {
+    (state: any): void;
+}
+
 class Stats {
-    constructor(onUpdate) {
+    stats: StatsData;
+    onUpdate: UpdateCallback;
+    startTime: number | null;
+    firstTokenTime: number | null;
+    totalTokens: number;
+    promptCount: number;
+    lastDisplayTime: number | null;
+    lastTokensPerSecond: number;
+
+    constructor(onUpdate: UpdateCallback) {
         this.stats = {
             timeToFirstToken: null,
             evalTime: 0,
@@ -15,43 +38,41 @@ class Stats {
         this.firstTokenTime = null;
         this.totalTokens = 0;
         this.promptCount = 0;
-
         this.lastDisplayTime = null;
         this.lastTokensPerSecond = 0;
-        // usage data
     }
 
-    start() {
+    start(): void {
         this.startTime = Date.now();
         this.totalTokens = 0;
         this.firstTokenTime = null;
     }
 
-    end() {
+    end(): void {
         this.calculateFinalStats();
         //this.displayStats();
     }
 
-    usage(data) {
+    usage(data: any): void {
         if (data) {
             this.stats.promptTokens = data.prompt_tokens;
-            this.stats.promptCachedTokens = data.prompt_tokens_details?.cached_tokens;
+            this.stats.promptCachedTokens = data.prompt_tokens_details?.cached_tokens || 0;
             this.stats.completionTokens = data.completion_tokens;
         }
     }
 
-    recordFirstToken() {
+    recordFirstToken(): void {
         if (!this.firstTokenTime) {
             this.firstTokenTime = Date.now();
-            this.stats.timeToFirstToken = this.firstTokenTime - this.startTime;
+            this.stats.timeToFirstToken = this.firstTokenTime - this.startTime!;
         }
     }
 
-    incrementToken() {
+    incrementToken(): void {
         this.recordFirstToken();
         this.totalTokens++;
         const currentTime = Date.now();
-        const elapsedSeconds = (currentTime - this.firstTokenTime) / 1000;
+        const elapsedSeconds = (currentTime - this.firstTokenTime!) / 1000;
         const tokensPerSecond = elapsedSeconds > 0 ? this.totalTokens / elapsedSeconds : 0;
 
         if (this.lastDisplayTime === null || currentTime - this.lastDisplayTime > 50) {
@@ -65,14 +86,14 @@ class Stats {
         }
     }
 
-    calculateFinalStats() {
+    calculateFinalStats(): void {
         if (this.startTime === null) return;
 
         const evalTime = Date.now() - this.startTime;
         this.stats.evalTime = evalTime;
         this.stats.tokenGenerationPerSecond = this.stats.completionTokens / (evalTime / 1000);
 
-        const promptProcessingTime = this.firstTokenTime - this.startTime;
+        const promptProcessingTime = this.firstTokenTime! - this.startTime;
         if (promptProcessingTime > 0) {
             this.stats.promptProcessingPerSecond =
                 (this.stats.promptTokens - this.stats.promptCachedTokens) /
@@ -82,7 +103,7 @@ class Stats {
         }
     }
 
-    displayStats() {
+    displayStats(): void {
         console.log(`\n📊 Final Stats:`);
         console.log(`- Time to first token: ${this.stats.timeToFirstToken}ms`);
         console.log(`- Eval time: ${this.stats.evalTime}ms`);
@@ -100,4 +121,4 @@ class Stats {
     }
 }
 
-module.exports = Stats;
+export default Stats;

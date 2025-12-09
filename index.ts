@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-const Agent = require('./agent');
-const readline = require('readline');
+import Agent from './agent.ts';
+import { createInterface } from 'readline';
 
 async function main() {
-    const rl = readline.createInterface({
+    const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
     });
@@ -13,10 +13,10 @@ async function main() {
     process.stdin.setEncoding('utf8');
 
     // Parse command line arguments for parser selection and yolo mode
-    let parserType = 'plain'; // default parser
-    let question = '';
-    let yoloMode = false; // default is false
-    const args = process.argv.slice(2);
+    let parserType: string = 'plain'; // default parser
+    let question: string | undefined = undefined;
+    let yoloMode: boolean = false; // default is false
+    const args: string[] = process.argv.slice(2);
 
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--parser' || args[i] === '-p') {
@@ -26,13 +26,14 @@ async function main() {
             }
         } else if (args[i] === '--yolo' || args[i] === '-y') {
             yoloMode = true;
-        } else if (!question) {
+        } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }
     }
 
-    const agent = new Agent(rl, parserType);
+    const agent: Agent = new Agent(parserType);
     agent.yoloMode = yoloMode; // Set yolo mode
+    await agent.init();
 
     console.log('Coding Agent Started');
     console.log('Press ESC twice to stop requests');
@@ -57,8 +58,8 @@ async function main() {
     /**
      * Handle ESC key presses for stopping requests
      */
-    let escCount = 0;
-    process.stdin.on('data', (key) => {
+    let escCount: number = 0;
+    process.stdin.on('data', (key: string) => {
         // ESC key is ASCII 27
         if (key.charCodeAt(0) === 27) {
             escCount++;

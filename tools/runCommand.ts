@@ -1,13 +1,14 @@
-const { exec } = require('child_process');
-const util = require('util');
+import { exec } from 'child_process';
+import util from 'util';
+import type { ExecuteResult } from '../interfaces.ts';
 
 const execPromise = util.promisify(exec);
 
-async function execute(command, config) {
+async function execute(command: string, config?: { useDocker?: boolean }): Promise<ExecuteResult> {
     const cwd = process.cwd();
     console.log('Running command: ' + command);
 
-    const useDocker = config && config.useDocker !== false;
+    const useDocker = config?.useDocker !== false;
 
     try {
         if (useDocker) {
@@ -17,7 +18,6 @@ async function execute(command, config) {
             return {
                 success: true,
                 content: stdout,
-                stderr: stderr,
                 error: null,
             };
         } else {
@@ -26,7 +26,6 @@ async function execute(command, config) {
             return {
                 success: true,
                 content: stdout,
-                stderr: stderr,
                 error: null,
             };
         }
@@ -34,14 +33,13 @@ async function execute(command, config) {
         return {
             success: false,
             content: null,
-            stderr: error.stderr || '',
             error: error.message,
-            code: error.code,
         };
     }
 }
 
-module.exports = {
+// Export module
+export default {
     description: 'Run a bash command',
     arguments: [{ command: 'bash command to execute' }],
     execute,
