@@ -2,11 +2,11 @@ const { getDefaultModel } = require('./config');
 const Stats = require('./stats');
 
 class LLM {
-    constructor(onTPS) {
-        console.log(onTPS);
+    constructor(onUpdate) {
+        console.log(onUpdate);
         this.modelConfig = getDefaultModel();
         this.abortController = null;
-        this.stats = new Stats(onTPS);
+        this.stats = new Stats(onUpdate);
     }
 
     async streamResponse(messages, onChunk, onReasoningChunk) {
@@ -50,12 +50,11 @@ class LLM {
             try {
                 while (true) {
                     const { done, value } = await reader.read();
-
+                    if (done) break;
+                    this.stats.incrementToken();
                     const chunk = decoder.decode(value);
                     const lines = chunk.split('\n');
-                    if (done) break;
                     for (const line of lines) {
-                        this.stats.incrementToken();
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6);
                             if (data.trim() === '[DONE]') continue;

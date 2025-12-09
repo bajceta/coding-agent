@@ -15,29 +15,6 @@ class StatusBar {
         this.onUpdate = onUpdate;
     }
 
-    // Update token stats
-    setTPS(tps) {
-        this.state.tokensPerSecond = tps;
-        this.lastUpdate = Date.now();
-        this.onUpdate(this.getText());
-    }
-
-    updateStats(promptTokens, completionTokens, totalTokens, model = null) {
-        this.state.promptTokens = promptTokens;
-        this.state.completionTokens = completionTokens;
-        this.state.totalTokens = totalTokens;
-        this.state.model = model;
-
-        // Calculate tokens per second
-        const now = Date.now();
-        const elapsed = now - this.lastUpdate;
-        if (elapsed > 0) {
-            this.state.tokensPerSecond = (this.tokenCount / (elapsed / 1000)).toFixed(2);
-        }
-        this.lastUpdate = now;
-        this.tokenCount = totalTokens;
-    }
-
     // Set currently running tool
     setTool(toolName) {
         this.state.currentlyRunningTool = toolName;
@@ -51,6 +28,18 @@ class StatusBar {
     // Set general status message
     setStatus(status) {
         this.state.status = status;
+    }
+
+    // Update state with info object
+    updateState(info) {
+        // Copy all properties from info to this.state
+        for (const key in info) {
+            if (info.hasOwnProperty(key)) {
+                this.state[key] = info[key];
+            }
+        }
+        // Trigger update if needed
+        this.onUpdate(this.getText());
     }
 
     // Get formatted status text

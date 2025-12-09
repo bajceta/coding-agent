@@ -1,5 +1,5 @@
 class Stats {
-    constructor(onTPS) {
+    constructor(onUpdate) {
         this.stats = {
             timeToFirstToken: null,
             evalTime: 0,
@@ -9,7 +9,7 @@ class Stats {
             promptCachedTokens: 0,
             completionTokens: 0,
         };
-        this.onTPS = onTPS;
+        this.onUpdate = onUpdate;
 
         this.startTime = null;
         this.firstTokenTime = null;
@@ -57,7 +57,11 @@ class Stats {
         if (this.lastDisplayTime === null || currentTime - this.lastDisplayTime > 50) {
             this.lastDisplayTime = currentTime;
             this.lastTokensPerSecond = tokensPerSecond;
-            this.onTPS(this.lastTokensPerSecond);
+            // Update status bar with tokens per second
+            this.onUpdate({
+                tokensPerSecond: this.lastTokensPerSecond,
+                totalTokens: this.totalTokens,
+            });
         }
     }
 
@@ -77,7 +81,6 @@ class Stats {
             this.stats.promptProcessingPerSecond = 0;
         }
     }
-
 
     displayStats() {
         console.log(`\n📊 Final Stats:`);

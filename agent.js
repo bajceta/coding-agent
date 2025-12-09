@@ -15,7 +15,7 @@ const ToolLoader = require('./toolLoader');
 class Agent {
     constructor(parserType = 'plain') {
         this.window = new Window();
-        this.llm = new LLM(this.window.statusBar.setTPS.bind(this.window.statusBar));
+        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.statusBar = this.window.statusBar;
         this.tools = {};
         this.parserType = parserType;
@@ -214,12 +214,13 @@ class Agent {
                 //this.print(response)
                 if (response && response.stats) {
                     const stats = response.stats;
-                    this.window.statusBar.updateStats(
-                        stats.promptTokens,
-                        stats.completionTokens,
-                        stats.totalTokens,
-                        this.llm.modelConfig.model,
-                    );
+                    // Update status bar with token stats using updateState
+                    this.window.statusBar.updateState({
+                        promptTokens: stats.promptTokens,
+                        completionTokens: stats.completionTokens,
+                        totalTokens: stats.totalTokens,
+                        model: this.llm.modelConfig.model,
+                    });
                 }
 
                 let toolCalls = this.parseToolCalls(response.content);
