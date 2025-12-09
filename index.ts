@@ -87,26 +87,15 @@ async function main() {
 
     // Handle command line arguments
     if (question) {
-        console.log(`> ${question}`);
-
-        try {
-            console.log('\n🤖 Agent: ');
-            await agent.askQuestion(question);
-            console.log('\n');
-        } catch (error) {
-            console.error('❌ Error:', error.message);
-            console.error('Error:', error.stack);
-        }
-
+        await agent.askQuestion(question);
         return;
     }
 
     if (isTTY) {
-
         agent.showUserPrompt();
     } else {
         if (!question) {
-            console.log("No question asked, exiting.")
+            console.log('No question asked, exiting.\n');
             process.exit(0);
         }
     }

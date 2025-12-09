@@ -33,7 +33,7 @@ class Agent {
     messages: Array<{ role: string; content: string }>;
     config: Config;
     inputHandler: TerminalInputHandler;
- 
+
     constructor(config: Config) {
         this.config = config;
         this.window = new Window();
@@ -48,14 +48,14 @@ class Agent {
             this.toolPrompt = toolPromptJson;
         }
     }
- 
+
     async init() {
         await this.loadTools();
         this.messages.push({
             role: 'system',
             content: systemPrompt(this.tools, this.toolPrompt),
         });
- 
+
         this.inputHandler = new TerminalInputHandler(this);
         this.inputHandler.setup();
     }
@@ -63,7 +63,6 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        console.log(this.tools);
         setTools(this.tools);
         setToolsJson(this.tools);
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
@@ -81,7 +80,7 @@ class Agent {
 
     processInput(input: string) {
         if (input.toLowerCase() === 'exit') {
-            this.print('Goodbye!');
+            this.print('\nGoodbye!\n');
             process.exit(0);
         }
 
@@ -91,7 +90,6 @@ class Agent {
         });
 
         try {
-            this.print('\nAgent: ');
             this.run();
         } catch (error) {
             console.error('Error:', error.message);
@@ -108,6 +106,7 @@ class Agent {
     }
 
     async askQuestion(question: string) {
+        this.print('\nQuestion: ' + question);
         this.singleShot = true;
         this.messages.push({
             role: 'user',
@@ -131,8 +130,8 @@ class Agent {
                 .join(' ');
             this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
 
-            const safeTools = ['readFile'];
-            if (!this.config.yoloMode && !safeTools.includes(toolName)) {
+            // Use safeTools from config instead of hardcoded array
+            if (!this.config.yoloMode && !this.config.safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     this.print('Operation cancelled by user.');
@@ -177,6 +176,7 @@ class Agent {
             let response: LLMResponse;
 
             try {
+                this.print('\nAgent:\n');
                 response = await this.llm.streamResponse(
                     currentMessages,
                     this.print.bind(this),
@@ -225,9 +225,10 @@ class Agent {
             }
         }
 
-        if (!this.singleShot) {
-            this.showUserPrompt();
+        if (this.singleShot) {
+            process.exit(0);
         }
+        this.showUserPrompt();
     }
 
     stopRequest() {
@@ -236,7 +237,7 @@ class Agent {
             const lastMessage = this.messages.pop();
             this.print(
                 '\n🛑 Removed last message from conversation: ' +
-                lastMessage.content.substring(0, 30),
+                    lastMessage.content.substring(0, 30),
             );
         }
     }

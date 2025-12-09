@@ -13,6 +13,7 @@ export interface Config {
     models: ModelConfig[];
     container: boolean; // Add container configuration
     parserType: string;
+    safeTools: string[]; // Add safeTools array
 }
 
 const defaultConfig: Config = {
@@ -25,8 +26,10 @@ const defaultConfig: Config = {
         },
     ],
     container: true,
-    parserType: "plain", yoloMode: false,
-}
+    parserType: 'plain',
+    yoloMode: false,
+    safeTools: ['readFile'], // Add default safe tools
+};
 
 let config: Config = null;
 export function init(): void {
@@ -34,7 +37,10 @@ export function init(): void {
     try {
         if (fs.existsSync(configPath)) {
             const configData = fs.readFileSync(configPath, 'utf8');
-            config = JSON.parse(configData);
+            config = {
+                ...defaultConfig,
+                ...JSON.parse(configData),
+            };
         } else {
             // Create default configuration
             config = defaultConfig;

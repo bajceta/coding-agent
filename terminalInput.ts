@@ -27,14 +27,16 @@ export class TerminalInputHandler {
                 this.buffer = '';
                 return;
             }
-            if (code === 0x7f || code === 0x08) { // Backspace (DEL or BS)
+            if (code === 0x7f || code === 0x08) {
+                // Backspace (DEL or BS)
                 if (this.buffer.length > 0) {
                     this.buffer = this.buffer.slice(0, -1); // Remove last character
                     process.stdout.write('\x08 \x08'); // Move cursor back, clear, move back
                 }
                 return;
             }
-            if (code === 0x03) { // Ctrl+C
+            if (code === 0x03) {
+                // Ctrl+C
                 console.log('\nExiting...');
                 process.exit(0);
             }

@@ -8,7 +8,6 @@ async function execute(command: string): Promise<ExecuteResult> {
     const cwd = process.cwd();
     console.log('Running command: ' + command);
 
-
     try {
         if (getConfig().container) {
             console.log('Running command in Docker');
