@@ -5,7 +5,7 @@ async function execute(_path) {
     try {
         const cwd = process.cwd();
         const resolvedPath = path.resolve(_path);
-        
+
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
@@ -13,12 +13,12 @@ async function execute(_path) {
                 error: 'Path must be within the current working directory',
             };
         }
-        
+
         const content = await fs.readFile(resolvedPath, 'utf8');
         return {
             success: true,
             content: content,
-            error: null
+            error: null,
         };
     } catch (error) {
         return {

@@ -9,12 +9,15 @@ const {
     toolPrompt: toolPromptJson,
 } = require('./parser-json');
 const Window = require('./window');
-
 const safeTools = ['readFile'];
+const OutputManager = require('./outputManager');
+const ToolLoader = require('./toolLoader');
 
 class Agent {
     constructor(rl, parserType = 'plain') {
         this.window = new Window();
+        this.outputManager = new OutputManager();
+        this.outputManager.setWindow(this.window);
         this.llm = new LLM();
         this.tools = {};
         this.parserType = parserType;
@@ -23,13 +26,14 @@ class Agent {
         this.loadTools();
         this.readline = rl;
         this.singleShot = false;
-        this.messages = []; // Store reference to messages array
-        this.yoloMode = false; // Initialize yolo mode to false
-        
+        this.messages = [];
+        this.yoloMode = false;
+
         if (parserType === 'json') {
             this.parseToolCalls = parseToolCallsJson;
             this.toolPrompt = toolPromptJson;
         }
+
         this.messages.push({
             role: 'system',
             content: systemPrompt(this.tools, this.toolPrompt),
@@ -37,28 +41,10 @@ class Agent {
     }
 
     loadTools() {
-        const toolsDir = path.join(__dirname, 'tools');
-        if (fs.existsSync(toolsDir)) {
-            const files = fs.readdirSync(toolsDir);
-            for (const file of files) {
-                if (file.endsWith('.js') && file !== 'index.js') {
-                    const toolName = path.basename(file, '.js');
-                    try {
-                        const toolModule = require(path.join(toolsDir, file));
-                        toolModule.name = toolName;
-                        this.tools[toolName] = toolModule;
-                    } catch (error) {
-                        console.error(`Failed to load tool ${toolName}:`, error.message);
-                    }
-                }
-            }
-        }
-
-        // Set tools for both parsers
+        const tools = ToolLoader.loadTools();
+        this.tools = tools;
         setTools(this.tools);
         setToolsJson(this.tools);
-
-        // Print number of loaded tools
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
@@ -83,7 +69,6 @@ class Agent {
                 return;
             }
 
-            // Add user message to conversation
             this.messages.push({
                 role: 'user',
                 content: input,
@@ -113,19 +98,18 @@ class Agent {
         await this.run();
     }
 
-    // Process a single tool call
-    async processToolCall(toolCallData) {
+    async processToolCall(toolcall) {
         try {
-            const toolName = toolCallData.name;
-            const args = toolCallData.arguments || {};
+            const toolName = toolcall.name;
+            const args = toolcall.arguments || {};
             const tool = this.tools[toolName];
             if (!tool) {
                 throw new Error(`Tool ${toolName} not found`);
             }
+
             const showArgs = args.map((arg) => arg.substring(0, 20)).join(' ');
             this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
-            
-            // Bypass safe tool check if yolo mode is enabled
+
             if (!this.yoloMode && !safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
@@ -140,7 +124,6 @@ class Agent {
             }
 
             if (result !== null) {
-                // Only proceed if execution was confirmed
                 let resultText = '';
                 if (result.success) {
                     if (result.content !== undefined) {
@@ -156,7 +139,7 @@ class Agent {
                 return resultText;
             }
         } catch (error) {
-            console.error(`Error executing tool ${toolCallData.name}:`, error.message);
+            console.error(`Error executing tool ${toolcall.name}:`, error.message);
             return `Tool execution error: ${error.message}`;
         }
     }
@@ -179,49 +162,39 @@ class Agent {
                     this.print.bind(this),
                     (chunk) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
                 );
+
+                this.print('\n');
+                currentMessages.push({
+                    role: 'assistant',
+                    content: response.content,
+                });
+
+                let toolCalls = this.parseToolCalls(response.content);
+                if (toolCalls.length > 0) {
+                    hasToolCalls = true;
+                    for (const toolCall of toolCalls) {
+                        const result = await this.processToolCall(toolCall, currentMessages);
+                        if (result) {
+                            const msg = {
+                                role: 'tool',
+                                content: result,
+                            };
+                            currentMessages.push(msg);
+                        }
+                    }
+                }
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`, error);
             }
-            this.print('\n');
-            // this.print(JSON.stringify(response));
-            // TODO Do not place thinking content into the context.
-            currentMessages.push({
-                role: 'assistant',
-                content: response.content,
-            });
-
-            // Check if LLM provided any tool calls in its response
-            let toolCalls = this.parseToolCalls(response.content);
-
-            //this.print(JSON.stringify(toolCalls));
-            if (toolCalls.length > 0) {
-                hasToolCalls = true;
-                for (const toolCall of toolCalls) {
-                    const result = await this.processToolCall(toolCall, currentMessages);
-
-                    if (result) {
-                        const msg = {
-                            role: 'tool',
-                            content: result,
-                        };
-                        currentMessages.push(msg);
-                    }
-                }
-            }
         }
+
         if (!this.singleShot) {
             this.showUserPrompt();
         }
-        return;
     }
 
-    /**
-     * Stop the current request in progress
-     */
     stopRequest() {
         this.llm.stopRequest();
-
-        // Remove the last element from messages (the user message that was being processed)
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
             this.print('\n🛑 Removed last message from conversation:', lastMessage.content);

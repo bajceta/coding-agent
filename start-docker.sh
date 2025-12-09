@@ -22,9 +22,9 @@ fi
 
 # Run the docker command
 docker run -it --rm \
- -v /home/vlada/src/innercore/agent2:/agent \
- -v /home/vlada/.config/codingagent.json:/root/.config/codingagent.json \
- -v $PWD:/workspace  \
- -w /workspace \
-agent-runner:1 /agent/index.js --yolo $1
-#node:24-alpine3.23 /agent/index.js --yolo $*
+    -v $HOME/src/innercore/agent2:/agent \
+    -v $HOME/.config/codingagent.json:/home/node/.config/codingagent.json \
+    --user $(id -u):$(id -g) \
+    -v $PWD:/workspace \
+    -w /workspace \
+    agent-runner:1 /agent/index.js --yolo $1

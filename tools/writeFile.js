@@ -5,7 +5,7 @@ async function execute(_path, content) {
     try {
         const cwd = process.cwd();
         const resolvedPath = path.resolve(_path);
-        
+
         if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
             return {
                 success: false,
@@ -21,7 +21,7 @@ async function execute(_path, content) {
         return {
             success: true,
             content: `Successfully wrote to ${resolvedPath}`,
-            error: null
+            error: null,
         };
     } catch (error) {
         return {

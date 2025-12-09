@@ -6,9 +6,9 @@ const execPromise = util.promisify(exec);
 async function execute(command, config) {
     const cwd = process.cwd();
     console.log('Running command: ' + command);
-    
+
     const useDocker = config && config.useDocker !== false;
-    
+
     try {
         if (useDocker) {
             console.log('Running command in Docker');
@@ -18,7 +18,7 @@ async function execute(command, config) {
                 success: true,
                 content: stdout,
                 stderr: stderr,
-                error: null
+                error: null,
             };
         } else {
             console.log('Running command locally');
@@ -27,7 +27,7 @@ async function execute(command, config) {
                 success: true,
                 content: stdout,
                 stderr: stderr,
-                error: null
+                error: null,
             };
         }
     } catch (error) {
@@ -36,7 +36,7 @@ async function execute(command, config) {
             content: null,
             stderr: error.stderr || '',
             error: error.message,
-            code: error.code
+            code: error.code,
         };
     }
 }

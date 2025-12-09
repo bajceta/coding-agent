@@ -6,13 +6,13 @@ async function findText(text) {
         return {
             success: true,
             content: result.content,
-            error: null
+            error: null,
         };
     } else {
         return {
             success: false,
             content: null,
-            error: result.error
+            error: result.error,
         };
     }
 }

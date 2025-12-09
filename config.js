@@ -3,7 +3,7 @@ const path = require('path');
 
 function getConfig() {
     const configPath = path.join(process.env.HOME, '.config', 'codingagent.json');
-
+    console.log(configPath);
     try {
         if (fs.existsSync(configPath)) {
             const configData = fs.readFileSync(configPath, 'utf8');
