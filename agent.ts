@@ -1,12 +1,9 @@
 import LLM from './llm.ts';
 import { systemPrompt } from './systemPrompt.ts';
 import type { Config } from './config.ts';
-import {
-    parseToolCalls as parseToolCallsJson,
-    setTools as setToolsJson,
-    toolPrompt as toolPromptJson,
-} from './parser-json.ts';
-import { parseToolCalls, setTools, toolPrompt } from './parser.ts';
+import { JSONParser } from './parser-json.ts';
+import type { Parser } from './parser.ts';
+import { PlainTextParser } from './parser-plain.ts';
 import Window from './window.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tool, Tools, ToolCall, ExecuteResult } from './interfaces.ts';
@@ -15,10 +12,8 @@ import { TerminalInputHandler } from './terminalInput.ts'; // Import the handler
 class Agent {
     window: Window;
     llm: LLM;
-    tools: Record<string, Tool>;
-    parserType: string;
-    parseToolCalls: (content: string) => ToolCall[];
-    toolPrompt: (tools: Tools) => string;
+    tools: Tools;
+    parser: Parser;
     singleShot: boolean;
     messages: Array<{ role: string; content: string }>;
     config: Config;
@@ -29,13 +24,12 @@ class Agent {
         this.window = new Window();
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.tools = {};
-        this.parseToolCalls = parseToolCalls;
-        this.toolPrompt = toolPrompt;
         this.singleShot = false;
         this.messages = [];
         if (this.config.parserType === 'json') {
-            this.parseToolCalls = parseToolCallsJson;
-            this.toolPrompt = toolPromptJson;
+            this.parser = new JSONParser();
+        } else {
+            this.parser = new PlainTextParser();
         }
     }
 
@@ -43,7 +37,7 @@ class Agent {
         await this.loadTools();
         this.messages.push({
             role: 'system',
-            content: systemPrompt(this.tools, this.toolPrompt),
+            content: systemPrompt(this.tools, this.parser.toolPrompt),
         });
 
         this.inputHandler = new TerminalInputHandler(this);
@@ -53,8 +47,7 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        setTools(this.tools);
-        setToolsJson(this.tools);
+        this.parser.setTools(this.tools);
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
@@ -191,7 +184,7 @@ class Agent {
                     });
                 }
 
-                let toolCalls = this.parseToolCalls(response.content);
+                let toolCalls = this.parser.parseToolCalls(response.content);
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
