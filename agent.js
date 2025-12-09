@@ -10,15 +10,13 @@ const {
 } = require('./parser-json');
 const Window = require('./window');
 const safeTools = ['readFile'];
-const OutputManager = require('./outputManager');
 const ToolLoader = require('./toolLoader');
 
 class Agent {
     constructor(rl, parserType = 'plain') {
         this.window = new Window();
-        this.outputManager = new OutputManager();
-        this.outputManager.setWindow(this.window);
-        this.llm = new LLM();
+        this.llm = new LLM(this.window.statusBar.setTPS.bind(this.window.statusBar));
+        this.statusBar = this.window.statusBar;
         this.tools = {};
         this.parserType = parserType;
         this.parseToolCalls = parseToolCalls;
@@ -169,12 +167,23 @@ class Agent {
                     content: response.content,
                 });
 
+                //this.print(response)
+                if (response && response.stats) {
+                    const stats = response.stats;
+                    this.window.statusBar.updateStats(
+                        stats.promptTokens,
+                        stats.completionTokens,
+                        stats.totalTokens,
+                        this.llm.modelConfig.model,
+                    );
+                }
+
                 let toolCalls = this.parseToolCalls(response.content);
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
                         // Set tool status before execution
-                        this.outputManager.setTool(toolCall.name);
+                        this.statusBar.setTool(toolCall.name);
 
                         const result = await this.processToolCall(toolCall, currentMessages);
                         if (result) {
@@ -186,24 +195,14 @@ class Agent {
                         }
 
                         // Clear tool status after execution
-                        this.outputManager.clearTool();
+                        this.statusBar.clearTool();
                     }
                 }
-        // Update status bar with token stats after response
-        if (response && response.stats) {
-            const tokenStats = response.stats;
-            this.outputManager.updateStatusBar(
-                tokenStats.prompt_tokens,
-                tokenStats.completion_tokens,
-                tokenStats.total_tokens,
-                this.llm.modelConfig.model
-            );
-        }
+                // Update status bar with token stats after response
             } catch (error) {
                 console.error(`LLM Stream Error: ${error.message}`, error);
             }
         }
-
 
         if (!this.singleShot) {
             this.showUserPrompt();

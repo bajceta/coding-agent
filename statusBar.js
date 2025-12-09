@@ -1,5 +1,5 @@
 class StatusBar {
-    constructor() {
+    constructor(onUpdate) {
         this.state = {
             promptTokens: 0,
             completionTokens: 0,
@@ -8,14 +8,21 @@ class StatusBar {
             lastTokenTime: null,
             currentlyRunningTool: null,
             model: null,
-            status: 'Ready'
+            status: 'Ready',
         };
         this.lastUpdate = Date.now();
         this.tokenCount = 0;
+        this.onUpdate = onUpdate;
     }
 
     // Update token stats
-    updateTokens(promptTokens, completionTokens, totalTokens, model = null) {
+    setTPS(tps) {
+        this.state.tokensPerSecond = tps;
+        this.lastUpdate = Date.now();
+        this.onUpdate(this.getText());
+    }
+
+    updateStats(promptTokens, completionTokens, totalTokens, model = null) {
         this.state.promptTokens = promptTokens;
         this.state.completionTokens = completionTokens;
         this.state.totalTokens = totalTokens;
@@ -48,12 +55,20 @@ class StatusBar {
 
     // Get formatted status text
     getText() {
-        const { promptTokens, completionTokens, totalTokens, tokensPerSecond, currentlyRunningTool, model, status } = this.state;
+        const {
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            tokensPerSecond,
+            currentlyRunningTool,
+            model,
+            status,
+        } = this.state;
 
         let text = `Tokens: ${promptTokens} (P) / ${completionTokens} (C) / ${totalTokens} (T)`;
 
         if (tokensPerSecond > 0) {
-            text += ` | TPS: ${tokensPerSecond}`;
+            text += ` | TPS: ${tokensPerSecond.toFixed(1)}`;
         }
 
         if (currentlyRunningTool) {

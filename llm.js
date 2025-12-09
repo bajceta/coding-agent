@@ -2,10 +2,11 @@ const { getDefaultModel } = require('./config');
 const Stats = require('./stats');
 
 class LLM {
-    constructor() {
+    constructor(onTPS) {
+        console.log(onTPS);
         this.modelConfig = getDefaultModel();
         this.abortController = null;
-        this.stats = new Stats();
+        this.stats = new Stats(onTPS);
     }
 
     async streamResponse(messages, onChunk, onReasoningChunk) {

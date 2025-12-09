@@ -4,33 +4,23 @@ class Window {
     constructor() {
         this.columnPos = 0;
         this.statusText = '';
-        this.statusBar = new StatusBar();
-    }
-
-    // Set status text (called by OutputManager)
-    setStatus(text) {
-        this.statusText = text;
-        this.renderStatusBar();
+        this.statusBar = new StatusBar(this.setStatus.bind(this));
     }
 
     // Render status bar (called internally)
     renderStatusBar() {
         const rows = process.stdout.rows;
-        const statusRow = rows;
-        const columns = process.stdout.columns;
 
         // Move to status row, clear line, write text
-        process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
+        process.stdout.write('\x1b[s'); // Save cursor position
+        process.stdout.write(`\x1b[${rows};1H\x1b[K`);
         process.stdout.write(this.statusText);
-        // Pad with spaces to ensure full row is cleared
-        const padding = ' '.repeat(columns - this.statusText.length);
-        process.stdout.write(padding);
+        //process.stdout.write(`Tokens/s: ${this.lastTokensPerSecond.toFixed(2)}`);
+        process.stdout.write('\x1b[u'); // Restore cursor position
     }
-
-    // Update status bar with new data from StatusBar
-    updateStatusBar() {
-        const statusText = this.statusBar.getText();
-        this.setStatus(statusText);
+    setStatus(text) {
+        this.statusText = text;
+        this.renderStatusBar();
     }
 
     newline() {
@@ -45,6 +35,7 @@ class Window {
         // Move cursor to bottom of text area
         process.stdout.write(`\x1b[${textAreaBottom};0H`);
         this.columnPos = 0;
+        this.renderStatusBar();
     }
 
     printAddToLine(chunk) {

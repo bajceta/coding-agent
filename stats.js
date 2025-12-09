@@ -1,11 +1,16 @@
 class Stats {
-    constructor() {
+    constructor(onTPS) {
         this.stats = {
             timeToFirstToken: null,
             evalTime: 0,
             promptProcessingPerSecond: 0,
             tokenGenerationPerSecond: 0,
+        promptTokens : 0,
+        promptCachedTokens : 0,
+        completionTokens : 0,
         };
+        this.onTPS = onTPS;
+
         this.startTime = null;
         this.firstTokenTime = null;
         this.totalTokens = 0;
@@ -14,9 +19,6 @@ class Stats {
         this.lastDisplayTime = null;
         this.lastTokensPerSecond = 0;
         // usage data
-        this.promptTokens = 0;
-        this.promptCachedTokens = 0;
-        this.completionTokens = 0;
     }
 
     start() {
@@ -26,14 +28,14 @@ class Stats {
 
     end() {
         this.calculateFinalStats();
-        this.displayStats();
+        //this.displayStats();
     }
 
     usage(data) {
         if (data) {
-            this.promptTokens = data.prompt_tokens;
-            this.promptCachedTokens = data.prompt_tokens_details?.cached_tokens;
-            this.completionTokens = data.completion_tokens;
+            this.stats.promptTokens = data.prompt_tokens;
+            this.stats.promptCachedTokens = data.prompt_tokens_details?.cached_tokens;
+            this.stats.completionTokens = data.completion_tokens;
         }
     }
 
@@ -63,24 +65,19 @@ class Stats {
 
         const evalTime = Date.now() - this.startTime;
         this.stats.evalTime = evalTime;
-        this.stats.tokenGenerationPerSecond = this.completionTokens / (evalTime / 1000);
+        this.stats.tokenGenerationPerSecond = this.stats.completionTokens / (evalTime / 1000);
 
         const promptProcessingTime = this.firstTokenTime - this.startTime;
         if (promptProcessingTime > 0) {
             this.stats.promptProcessingPerSecond =
-                (this.promptTokens - this.promptCachedTokens) / (promptProcessingTime / 1000);
+                (this.stats.promptTokens - this.stats.promptCachedTokens) / (promptProcessingTime / 1000);
         } else {
             this.stats.promptProcessingPerSecond = 0;
         }
     }
 
     displayTokensPerSecond() {
-        const rows = process.stdout.rows;
-        const columns = process.stdout.columns;
-        process.stdout.write('\x1b[s'); // Save cursor position
-        process.stdout.write(`\x1b[${rows};1H`); // Move to bottom row, column 1 (0-indexed, so 1 is first column)
-        process.stdout.write(`Tokens/s: ${this.lastTokensPerSecond.toFixed(2)}`);
-        process.stdout.write('\x1b[u'); // Restore cursor position
+        this.onTPS(this.lastTokensPerSecond);
     }
 
     displayStats() {
@@ -88,8 +85,8 @@ class Stats {
         console.log(`- Time to first token: ${this.stats.timeToFirstToken}ms`);
         console.log(`- Eval time: ${this.stats.evalTime}ms`);
 
-        console.log(`- Prompt tokens: ${this.promptTokens} (${this.promptCachedTokens}) `);
-        console.log(`- Generated tokens: ${this.completionTokens}`);
+        console.log(`- Prompt tokens: ${this.stats.promptTokens} (${this.stats.promptCachedTokens}) `);
+        console.log(`- Generated tokens: ${this.stats.completionTokens}`);
         console.log(
             `- Prompt processing: ${this.stats.promptProcessingPerSecond.toFixed(2)} tokens/sec`,
         );
