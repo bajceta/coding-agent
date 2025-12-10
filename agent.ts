@@ -100,6 +100,7 @@ class Agent {
     }
 
     async processToolCall(toolcall: ToolCall): Promise<string> {
+        console.log(toolcall);
         try {
             const toolName = toolcall.name;
             const args = toolcall.arguments || {};

@@ -1,14 +1,14 @@
 import type { Tool, ToolCall, Tools } from './interfaces.ts';
 import type { Parser } from './parser.ts';
- 
+
 let tools: Tools = {};
- 
+
 export class JSONParser implements Parser {
     parseToolCalls(responseText: string): ToolCall[] {
         const toolCalls: ToolCall[] = [];
         const jsonToolCallRegex =
-             /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g;
- 
+            /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g;
+
         let match;
         while ((match = jsonToolCallRegex.exec(responseText)) !== null) {
             let jsonString = match[0];
@@ -26,10 +26,10 @@ export class JSONParser implements Parser {
                 continue;
             }
         }
- 
+
         return toolCalls;
     }
- 
+
     toolPrompt(tools: Tools): string {
         // JSON format example
         const jsonExample = `{
@@ -41,7 +41,7 @@ export class JSONParser implements Parser {
     }
   }
 }`;
- 
+
         return `
 When you need to use tools, respond using this format:
 ${jsonExample}
@@ -88,18 +88,18 @@ You have access to following tools:
 ${Object.values(tools).map(toolDefinitionToText).join('\n')}
 `;
     }
- 
+
     setTools(_tools: Tools): void {
         tools = _tools;
     }
 }
- 
+
 function toolDefinitionToText(def: Tool): string {
     const args: string[] = [];
     for (const argName in def.arguments) {
         args.push(`${argName}:${def.arguments[argName]}`);
     }
- 
+
     const result = `
 tool_name: ${def.name}
 description: ${def.description}
