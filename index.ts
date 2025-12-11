@@ -14,14 +14,9 @@ async function main() {
         isTTY = false;
     }
 
-    // Parse command line arguments for parser selection and yolo mode
-    let _parserType: string = 'plain'; // default parser
     let question: string | undefined = undefined;
-    let _yoloMode: boolean = false; // default is false
-    let _containerMode: boolean = true; // default is true as requested
     const args: string[] = process.argv.slice(2);
 
-    // Get config after potential updates
     const config = getConfig();
 
     for (let i = 0; i < args.length; i++) {
@@ -55,12 +50,6 @@ async function main() {
         console.log('- "Create a new file called test.txt with content Hello World"');
         console.log('- "Show me the current directory contents"');
         console.log('');
-    }
-
-    if (config.parserType === 'json') {
-        console.log('Using JSON parser mode');
-    } else {
-        console.log('Using plain text parser mode');
     }
 
     if (config.yoloMode) {

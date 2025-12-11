@@ -4,9 +4,10 @@ import type { Config } from './config.ts';
 import { JSONParser } from './parser-json.ts';
 import type { Parser } from './parser.ts';
 import { PlainTextParser } from './parser-plain.ts';
+import { NativeParser } from './parser-native.ts';
 import Window from './window.ts';
 import { loadTools } from './toolLoader.ts';
-import type { Tool, Tools, ToolCall, ExecuteResult } from './interfaces.ts';
+import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
 import { TerminalInputHandler } from './terminalInput.ts'; // Import the handler
 
 class Agent {
@@ -15,7 +16,7 @@ class Agent {
     tools: Tools;
     parser: Parser;
     singleShot: boolean;
-    messages: Array<{ role: string; content: string }>;
+    messages: Message[];
     config: Config;
     inputHandler: TerminalInputHandler;
 
@@ -26,10 +27,22 @@ class Agent {
         this.tools = {};
         this.singleShot = false;
         this.messages = [];
-        if (this.config.parserType === 'json') {
-            this.parser = new JSONParser();
-        } else {
-            this.parser = new PlainTextParser();
+        switch (this.config.parserType) {
+            case 'json':
+                this.parser = new JSONParser();
+                console.log('Using JSON parser mode');
+                break;
+            case 'plain':
+                this.parser = new PlainTextParser();
+                console.log('Using plain text parser mode');
+                break;
+            case 'native':
+                this.parser = new NativeParser();
+                console.log('Using native parser mode');
+                break;
+            default:
+                console.log('No tool parser specified!!');
+                process.exit(1);
         }
     }
 
@@ -47,7 +60,6 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        this.parser.setTools(this.tools);
         this.print(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
@@ -163,15 +175,12 @@ class Agent {
                 this.print('\n\x1b[32mAgent:\n\x1b[0m');
                 response = await this.llm.makeRequest(
                     currentMessages,
+                    this.tools,
                     this.print.bind(this),
                     (chunk: string) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
                 );
 
                 this.print('\n');
-                currentMessages.push({
-                    role: 'assistant',
-                    content: response.content,
-                });
 
                 if (response && response.stats) {
                     const stats = response.stats;
@@ -185,7 +194,9 @@ class Agent {
                     });
                 }
 
-                let toolCalls = this.parser.parseToolCalls(response.content);
+                let toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg);
+                console.log(response.msg);
+                console.log(toolCalls);
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {

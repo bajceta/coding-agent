@@ -1,10 +1,9 @@
-import type { Tool, ToolCall, Tools } from './interfaces.ts';
+import type { ToolCall, Tools, Message } from './interfaces.ts';
 
 // Parser interface for tool call parsing
 export interface Parser {
-    parseToolCalls(content: string): ToolCall[];
+    parseToolCalls(response: Message): ToolCall[];
     toolPrompt(tools: Tools): string;
-    setTools(tools: Tools): void;
 }
 
 // Utility type for tool call extraction

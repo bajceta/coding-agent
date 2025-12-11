@@ -1,6 +1,6 @@
 interface StatusBarState {
     promptTokens: number;
-    completionTokens: number;
+    completionTokens?: number;
     promptCachedTokens: number;
     totalTokens: number;
     tokensPerSecond: number;
@@ -90,7 +90,6 @@ class StatusBar {
         const {
             promptTokens,
             promptCachedTokens,
-            completionTokens,
             totalTokens,
             tokensPerSecond,
             currentlyRunningTool,

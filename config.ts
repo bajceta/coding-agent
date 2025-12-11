@@ -26,7 +26,7 @@ const defaultConfig: Config = {
         },
     ],
     container: true,
-    parserType: 'plain',
+    parserType: 'native',
     yoloMode: false,
     safeTools: ['readFile'], // Add default safe tools
 };

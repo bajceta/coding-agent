@@ -1,11 +1,10 @@
-import type { Tool, ToolCall, Tools } from './interfaces.ts';
 import type { Parser } from './parser.ts';
-
-let tools: Tools = {};
+import type { Tool } from './interfaces.ts';
 
 export class JSONParser implements Parser {
-    parseToolCalls(responseText: string): ToolCall[] {
-        const toolCalls: ToolCall[] = [];
+    parseToolCalls(response) {
+        const responseText = response.content;
+        const toolCalls = [];
         const jsonToolCallRegex =
             /(?:\{\s*"tool_call":\s*\{\s*"name": "\w*"[,\s]*"arguments": \{(?:\s*"\w*": "(?:\\"|[^"]|\\n)*"[,\s]*)+\}\s*\}\s*\})/g;
 
@@ -15,7 +14,7 @@ export class JSONParser implements Parser {
             try {
                 const parsed = JSON.parse(jsonString);
                 if (parsed.tool_call && parsed.tool_call.name) {
-                    const toolCall: ToolCall = {
+                    const toolCall = {
                         name: parsed.tool_call.name,
                         arguments: parsed.tool_call.arguments || {},
                     };
@@ -30,7 +29,7 @@ export class JSONParser implements Parser {
         return toolCalls;
     }
 
-    toolPrompt(tools: Tools): string {
+    toolPrompt(tools) {
         // JSON format example
         const jsonExample = `{
   "tool_call": {
@@ -87,10 +86,6 @@ Example: write content to file 'demo.js'
 You have access to following tools:
 ${Object.values(tools).map(toolDefinitionToText).join('\n')}
 `;
-    }
-
-    setTools(_tools: Tools): void {
-        tools = _tools;
     }
 }
 

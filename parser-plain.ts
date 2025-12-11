@@ -4,7 +4,8 @@ import type { Parser } from './parser.ts';
 let tools: Tools = {};
 
 export class PlainTextParser implements Parser {
-    parseToolCalls(responseText: string): ToolCall[] {
+    parseToolCalls(response) {
+        const responseText = response.content;
         const toolCalls: ToolCall[] = [];
         const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g;
         let match;
@@ -92,10 +93,6 @@ end_tool_call
 You have access to following tools:
 ${Object.values(tools).map(toolDefinitionToText).join('\n')}
 `;
-    }
-
-    setTools(_tools: Tools): void {
-        tools = _tools;
     }
 }
 
