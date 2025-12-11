@@ -112,7 +112,6 @@ class Agent {
     }
 
     async processToolCall(toolcall: ToolCall): Promise<string> {
-        console.log(toolcall);
         try {
             const toolName = toolcall.name;
             const args = toolcall.arguments || {};
@@ -131,7 +130,7 @@ class Agent {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     this.print('Operation cancelled by user.');
-                    return `Tool ${toolName} rejected by user`;
+                    return `Tool ${toolName} rejected by user. Ask why?`;
                 }
             }
             const argsList: string[] = Object.values(args);
@@ -195,8 +194,6 @@ class Agent {
                 }
 
                 let toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg);
-                console.log(response.msg);
-                console.log(toolCalls);
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {

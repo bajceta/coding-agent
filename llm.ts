@@ -2,6 +2,8 @@ import { getDefaultModel } from './config.ts';
 import { openaiTools } from './parser-native.ts';
 import type { Tools, Message, LLMResponse } from './interfaces.ts';
 import Stats from './stats.ts';
+import fs from 'fs';
+import path from 'path';
 
 class LLM {
     modelConfig: any;
@@ -20,6 +22,10 @@ class LLM {
         onChunk: (chunk: string) => void,
         onReasoningChunk: (chunk: string) => void,
     ): Promise<LLMResponse> {
+        const resolvedPath = path.resolve('/tmp/messages');
+        messages.forEach(msg =>
+         fs.appendFileSync(resolvedPath, JSON.stringify(msg)+"\n", 'utf8')
+        );
         const controller = new AbortController();
         this.abortController = controller;
 
