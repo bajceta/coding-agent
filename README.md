@@ -30,12 +30,12 @@ To make the agent easily accessible, add this to your shell configuration file:
 For bash:
 
 ```
-echo "alias agent=$PWD/index.ts" >> ~/.bashrc
+echo "alias agent=$PWD/index.ts --log-file /tmp/messages" >> ~/.bashrc
 ```
 
 For zsh:
 
 ```
-echo "alias agent=\"/home/vlada/.local/share/fnm/node-versions/v24.11.1/installation/bin/node $PWD/index.ts --enable-containers\"" >> ~/.zshrc
+echo "alias agent=\"/home/vlada/.local/share/fnm/node-versions/v24.11.1/installation/bin/node $PWD/index.ts --enable-containers --log-file /tmp/messages\"" >> ~/.zshrc
 echo "alias yolo=\"$PWD/start-docker.sh --yes-i-am-sure\"" >> ~/.zshrc
 ```

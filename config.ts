@@ -11,9 +11,10 @@ interface ModelConfig {
 export interface Config {
     yoloMode: boolean;
     models: ModelConfig[];
-    container: boolean; // Add container configuration
+    container: boolean;
     parserType: string;
-    safeTools: string[]; // Add safeTools array
+    safeTools: string[];
+    logFile: string; // Add logFile property to Config interface
 }
 
 const defaultConfig: Config = {
@@ -28,10 +29,12 @@ const defaultConfig: Config = {
     container: true,
     parserType: 'native',
     yoloMode: false,
-    safeTools: ['readFile'], // Add default safe tools
+    safeTools: ['readFile'],
+    logFile: '', // Add default value for logFile
 };
 
 let config: Config = null;
+
 export function init(): void {
     const configPath = path.join(process.env.HOME, '.config', 'codingagent.json');
     try {
@@ -52,5 +55,7 @@ export function init(): void {
 }
 
 // Export the singleton instance
+
 export const getDefaultModel = (): ModelConfig => config.models[0];
+
 export const getConfig = (): Config => config;

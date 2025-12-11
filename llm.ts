@@ -1,4 +1,4 @@
-import { getDefaultModel } from './config.ts';
+import { getDefaultModel, getConfig } from './config.ts';
 import { openaiTools } from './parser-native.ts';
 import type { Tools, Message, LLMResponse } from './interfaces.ts';
 import Stats from './stats.ts';
@@ -9,11 +9,13 @@ class LLM {
     modelConfig: any;
     abortController: AbortController | null;
     stats: Stats;
+    config: any;
 
     constructor(onUpdate: (state: any) => void) {
         this.modelConfig = getDefaultModel();
         this.abortController = null;
         this.stats = new Stats(onUpdate);
+        this.config = getConfig();
     }
 
     async makeRequest(
@@ -22,10 +24,12 @@ class LLM {
         onChunk: (chunk: string) => void,
         onReasoningChunk: (chunk: string) => void,
     ): Promise<LLMResponse> {
-        const resolvedPath = path.resolve('/tmp/messages');
-        messages.forEach(msg =>
-         fs.appendFileSync(resolvedPath, JSON.stringify(msg)+"\n", 'utf8')
-        );
+        if (this.config.logFile.length > 0) {
+            const resolvedPath = path.resolve(this.config.logFile);
+            messages.forEach((msg) =>
+                fs.appendFileSync(resolvedPath, JSON.stringify(msg) + '\n', 'utf8'),
+            );
+        }
         const controller = new AbortController();
         this.abortController = controller;
 

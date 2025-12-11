@@ -33,6 +33,12 @@ async function main() {
             intro = false;
         } else if (args[i] === '--enable-containers') {
             config.container = true;
+        } else if (args[i] === '--log-file' || args[i] === '-l') {
+            // Handle --log-file flag
+            if (i + 1 < args.length) {
+                config.logFile = args[i + 1];
+                i++; // Skip next argument as it's the value
+            }
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }
@@ -60,6 +66,11 @@ async function main() {
         console.log('⚠️ Container mode enabled');
     } else {
         console.log('⚠️ Container mode disabled');
+    }
+
+    if (config.logFile) {
+        // Log the filename if provided
+        console.log(`📝 Log file set to: ${config.logFile}`);
     }
 
     /**
