@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import Agent from './agent.ts';
-import { init as initConfig, getConfig } from './config.ts'; // Import config singleton
+import Agent from './src/agent.ts';
+import { init as initConfig, getConfig } from './src/config.ts'; // Import config singleton
 
 async function main() {
     initConfig();

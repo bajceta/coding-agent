@@ -121,8 +121,11 @@ class LLM {
                 this.stats.end();
                 //qwen3 on vllm fix
                 toolcalls.forEach((toolcall) => {
-                    const sanitizedArgs = '{' + toolcall.function.arguments.split('{', 2)[1];
-                    toolcall.function.arguments = sanitizedArgs;
+                    const args = toolcall.function.arguments;
+                    if (args[0] != '{') {
+                        const sanitizedArgs = '{' + toolcall.function.arguments.split('{', 2)[1];
+                        toolcall.function.arguments = sanitizedArgs;
+                    }
                 });
                 const response = {
                     role: 'assistant',
