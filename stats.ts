@@ -6,6 +6,7 @@ interface StatsData {
     promptTokens: number;
     promptCachedTokens: number;
     completionTokens: number;
+    oldTokens: number;
 }
 
 interface UpdateCallback {
@@ -31,6 +32,7 @@ class Stats {
             promptTokens: 0,
             promptCachedTokens: 0,
             completionTokens: 0,
+            oldTokens: 0,
         };
         this.onUpdate = onUpdate;
 
@@ -45,19 +47,21 @@ class Stats {
     start(): void {
         this.startTime = Date.now();
         this.totalTokens = 0;
+        this.stats.oldTokens = this.stats.promptTokens;
         this.firstTokenTime = null;
     }
 
     end(): void {
-        this.calculateFinalStats();
         //this.displayStats();
     }
 
     usage(data: any): void {
         if (data) {
             this.stats.promptTokens = data.prompt_tokens;
-            this.stats.promptCachedTokens = data.prompt_tokens_details?.cached_tokens || 0;
+            this.stats.promptCachedTokens =
+                data.prompt_tokens_details?.cached_tokens || this.stats.oldTokens;
             this.stats.completionTokens = data.completion_tokens;
+            this.calculateFinalStats();
         }
     }
 
@@ -93,14 +97,10 @@ class Stats {
         this.stats.evalTime = evalTime;
         this.stats.tokenGenerationPerSecond = this.stats.completionTokens / (evalTime / 1000);
 
-        const promptProcessingTime = this.firstTokenTime! - this.startTime;
-        if (promptProcessingTime > 0) {
-            this.stats.promptProcessingPerSecond =
-                (this.stats.promptTokens - this.stats.promptCachedTokens) /
-                (promptProcessingTime / 1000);
-        } else {
-            this.stats.promptProcessingPerSecond = 0;
-        }
+        const effectivePromptTokens =
+            this.stats.promptTokens - (this.stats.promptCachedTokens || 0);
+        this.stats.promptProcessingPerSecond =
+            effectivePromptTokens / (this.stats.timeToFirstToken / 1000);
     }
 
     displayStats(): void {

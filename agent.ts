@@ -189,6 +189,8 @@ class Agent {
                         promptCachedTokens: stats.promptCachedTokens,
                         completionTokens: stats.completionTokens,
                         totalTokens: stats.completionTokens,
+                        tokensPerSecond: stats.tokenGenerationPerSecond,
+                        promptProcessingPerSecond: stats.promptProcessingPerSecond,
                         model: this.llm.modelConfig.model,
                     });
                 }

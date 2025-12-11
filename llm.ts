@@ -59,6 +59,7 @@ class LLM {
         let reader;
 
         try {
+            this.stats.start();
             const response = await fetch(`${this.modelConfig.baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -78,14 +79,13 @@ class LLM {
             const decoder = new TextDecoder();
             let fullResponse = '';
             let reasoning = '';
-            this.stats.start();
 
             try {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    this.stats.incrementToken();
                     const chunk = decoder.decode(value);
+                    this.stats.incrementToken();
                     //console.log(chunk);
                     const lines = chunk.split('\n');
                     for (const line of lines) {

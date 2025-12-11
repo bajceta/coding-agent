@@ -4,6 +4,7 @@ interface StatusBarState {
     promptCachedTokens: number;
     totalTokens: number;
     tokensPerSecond: number;
+    promptProcessingPerSecond: number;
     lastTokenTime: number | null;
     currentlyRunningTool: string | null;
     model: string | null;
@@ -39,6 +40,7 @@ class StatusBar {
             completionTokens: 0,
             totalTokens: 0,
             tokensPerSecond: 0,
+            promptProcessingPerSecond: 0,
             lastTokenTime: null,
             currentlyRunningTool: null,
             model: null,
@@ -92,6 +94,7 @@ class StatusBar {
             promptCachedTokens,
             totalTokens,
             tokensPerSecond,
+            promptProcessingPerSecond,
             currentlyRunningTool,
             model,
             status,
@@ -105,6 +108,11 @@ class StatusBar {
         // Tokens per second - blue for performance metrics
         if (tokensPerSecond > 0) {
             text += ` | ${BLUE}TPS: ${tokensPerSecond.toFixed(1)}${RESET}`;
+        }
+
+        // Prompt processing tokens per second - magenta for prompt processing metrics
+        if (promptProcessingPerSecond > 0) {
+            text += ` | ${MAGENTA}PPS: ${promptProcessingPerSecond.toFixed(1)}${RESET}`;
         }
 
         // Currently running tool - yellow for important information
