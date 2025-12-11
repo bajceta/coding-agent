@@ -2,7 +2,7 @@ import type { Parser } from './parser.ts';
 import type { Tool } from './interfaces.ts';
 
 export class JSONParser implements Parser {
-    parseToolCalls(response) {
+    parseToolCalls(response, _) {
         const responseText = response.content;
         const toolCalls = [];
         const jsonToolCallRegex =

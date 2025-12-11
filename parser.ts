@@ -2,7 +2,7 @@ import type { ToolCall, Tools, Message } from './interfaces.ts';
 
 // Parser interface for tool call parsing
 export interface Parser {
-    parseToolCalls(response: Message): ToolCall[];
+    parseToolCalls(response: Message, tools: Tools): ToolCall[];
     toolPrompt(tools: Tools): string;
 }
 

@@ -119,6 +119,11 @@ class LLM {
                     }
                 }
                 this.stats.end();
+                //qwen3 on vllm fix
+                toolcalls.forEach((toolcall) => {
+                    const sanitizedArgs = '{' + toolcall.function.arguments.split('{', 2)[1];
+                    toolcall.function.arguments = sanitizedArgs;
+                });
                 const response = {
                     role: 'assistant',
                     tool_calls: toolcalls,

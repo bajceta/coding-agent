@@ -1,24 +1,21 @@
 import type { Tool, ToolCall, Tools } from './interfaces.ts';
 import type { Parser } from './parser.ts';
 
-let tools: Tools = {};
-
 export class PlainTextParser implements Parser {
-    parseToolCalls(response) {
+    parseToolCalls(response, tools) {
         const responseText = response.content;
         const toolCalls: ToolCall[] = [];
         const toolCallRegex = /tool_call: ?(\w+)\n([\s\S]*?)end_tool_call/g;
         let match;
 
         while ((match = toolCallRegex.exec(responseText)) !== null) {
-            const args = this.extractArgs(match[2]);
             const toolCall: ToolCall = {
                 name: match[1],
                 arguments: {},
             };
-
             const tool = tools[toolCall.name];
             if (tool) {
+                const args = this.extractArgs(match[2]);
                 tool.arguments.forEach((arg) => {
                     Object.keys(arg).forEach((name) => {
                         const arg = args.find((a) => a.name === name);
@@ -28,12 +25,11 @@ export class PlainTextParser implements Parser {
                     });
                 });
             } else {
-                console.error('unknown tool : ' + toolCall.name);
+                console.error('unknown tool: ' + toolCall.name);
             }
 
             toolCalls.push(toolCall);
         }
-
         return toolCalls;
     }
 
@@ -98,8 +94,10 @@ ${Object.values(tools).map(toolDefinitionToText).join('\n')}
 
 function toolDefinitionToText(def: Tool): string {
     const args = [];
-    Object.entries(def.arguments).forEach(([name, value]) => args.push(name + ':' + value));
-
+    def.arguments.forEach((arg) => {
+        const [name, value] = Object.entries(arg)[0];
+        args.push(name + ':' + value);
+    });
     const result = `
 tool_name: ${def.name}
 description: ${def.description}

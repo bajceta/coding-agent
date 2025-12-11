@@ -1,10 +1,10 @@
 import type { Parser } from './parser.ts';
 import type { ToolCall, Message } from './interfaces.ts';
 import type { Tools, OpenaiToolDef } from './interfaces.ts';
+import { getConfig } from './config.ts';
 
 export class NativeParser implements Parser {
     parseToolCalls(msg: Message): ToolCall[] {
-        console.log(msg.tool_calls);
         const toolcalls = [];
         msg.tool_calls.forEach((_toolcall) => {
             const toolcall: ToolCall = {
@@ -25,6 +25,7 @@ export class NativeParser implements Parser {
 export function openaiTools(_tools: Tools): OpenaiToolDef[] {
     const tools = [];
 
+    if (getConfig().parserType != 'native') return tools;
     for (const [toolName, tool] of Object.entries(_tools)) {
         const properties = {};
         const required = [];

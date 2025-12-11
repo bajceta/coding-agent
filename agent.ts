@@ -195,7 +195,7 @@ class Agent {
                     });
                 }
 
-                let toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg);
+                let toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
