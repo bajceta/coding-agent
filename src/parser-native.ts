@@ -6,14 +6,16 @@ import { getConfig } from './config.ts';
 export class NativeParser implements Parser {
     parseToolCalls(msg: Message): ToolCall[] {
         const toolcalls = [];
-        msg.tool_calls.forEach((_toolcall) => {
-            const toolcall: ToolCall = {
-                id: _toolcall.id,
-                name: _toolcall.function.name,
-                arguments: JSON.parse(_toolcall.function.arguments),
-            };
-            toolcalls.push(toolcall);
-        });
+        if (msg.tool_calls) {
+            msg.tool_calls.forEach((_toolcall) => {
+                const toolcall: ToolCall = {
+                    id: _toolcall.id,
+                    name: _toolcall.function.name,
+                    arguments: JSON.parse(_toolcall.function.arguments),
+                };
+                toolcalls.push(toolcall);
+            });
+        }
         return toolcalls;
     }
 

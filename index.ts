@@ -15,14 +15,19 @@ async function main() {
     }
 
     let question: string | undefined = undefined;
+    let helpFlag: boolean = false;
     const args: string[] = process.argv.slice(2);
 
     const config = getConfig();
-
     for (let i = 0; i < args.length; i++) {
         if (args[i] === '--parser' || args[i] === '-p') {
             if (i + 1 < args.length) {
                 config.parserType = args[i + 1];
+                i++; // Skip next argument as it's the value
+            }
+        } else if (args[i] === '--log-level' || args[i] === '-L') {
+            if (i + 1 < args.length) {
+                config.logLevel = args[i + 1];
                 i++; // Skip next argument as it's the value
             }
         } else if (args[i] === '--yolo' || args[i] === '-y') {
@@ -30,6 +35,9 @@ async function main() {
         } else if (args[i] === '--disable-containers') {
             config.container = false;
         } else if (args[i] === '--no-intro') {
+            intro = false;
+        } else if (args[i] === '--help' || args[i] === '-h') {
+            helpFlag = true;
             intro = false;
         } else if (args[i] === '--enable-containers') {
             config.container = true;
@@ -56,6 +64,12 @@ async function main() {
         console.log('- "Create a new file called test.txt with content Hello World"');
         console.log('- "Show me the current directory contents"');
         console.log('');
+    }
+
+    // Print help if --help flag is detected
+    if (helpFlag) {
+        printHelp();
+        return;
     }
 
     if (config.yoloMode) {
@@ -125,3 +139,23 @@ main().catch((error) => {
     console.error('💥 Critical Error:', error.stack);
     process.exit(1);
 });
+
+function printHelp() {
+    console.log('Available Command Line Options:');
+    console.log('- --parser <type>, -p <type>: Sets the parser type. (native, plain, json)');
+    console.log('- --log-level <level>, -L <level>: Sets the log level.');
+    console.log('- --yolo, -y: Enables YOLO mode (all tools allowed without confirmation).');
+    console.log('- --disable-containers: Disables container mode.');
+    console.log('- --enable-containers: Enables container mode.');
+    console.log('- --no-intro: Disables the introductory message.');
+    console.log(
+        '- --help, -h: Prints this help information and disables the introductory message.',
+    );
+    console.log('- --log-file <file>, -l <file>: Sets the log file path.');
+    console.log('');
+    console.log('Examples:');
+    console.log('- ./index.ts --parser plain --log-level debug');
+    console.log('- ./index.ts --yolo --log-file output.log');
+    console.log('- ./index.ts --help');
+    console.log('');
+}

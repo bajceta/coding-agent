@@ -12,19 +12,19 @@ async function execute(command: string): Promise<ExecuteResult> {
         if (getConfig().container) {
             console.log('Running command in Docker');
             const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
-            const { stdout } = await execPromise(dockerCommand);
+            const { stdout, stderr } = await execPromise(dockerCommand);
             return {
                 success: true,
                 content: stdout,
-                error: null,
+                error: stderr,
             };
         } else {
             console.log('Running command locally');
-            const { stdout } = await execPromise(command);
+            const { stdout, stderr } = await execPromise(command);
             return {
                 success: true,
                 content: stdout,
-                error: null,
+                error: stderr,
             };
         }
     } catch (error) {

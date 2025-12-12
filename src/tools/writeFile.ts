@@ -20,7 +20,7 @@ async function execute(_path: string, content: string): Promise<ExecuteResult> {
         await fs.promises.writeFile(resolvedPath, content, 'utf8');
         return {
             success: true,
-            content: null,
+            content: 'ok',
             error: null,
         };
     } catch (error) {

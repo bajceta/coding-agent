@@ -9,6 +9,7 @@ interface ModelConfig {
 }
 
 export interface Config {
+    logLevel: string; // Add logLevel property to Config interface
     yoloMode: boolean;
     models: ModelConfig[];
     container: boolean;
@@ -18,6 +19,7 @@ export interface Config {
 }
 
 const defaultConfig: Config = {
+    logLevel: 'info', // Add default value for logLevel
     models: [
         {
             name: 'default',

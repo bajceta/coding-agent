@@ -6,9 +6,10 @@ import type { Parser } from './parser.ts';
 import { PlainTextParser } from './parser-plain.ts';
 import { NativeParser } from './parser-native.ts';
 import Window from './window.ts';
+import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
-import { TerminalInputHandler } from './terminalInput.ts'; // Import the handler
+import { TerminalInputHandler } from './terminalInput.ts';
 
 class Agent {
     window: Window;
@@ -19,30 +20,33 @@ class Agent {
     messages: Message[];
     config: Config;
     inputHandler: TerminalInputHandler;
+    log: Log;
 
     constructor(config: Config) {
         this.config = config;
-        this.window = new Window();
-        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
+        this.window = new Window(true);
+        this.log = new Log(this.window.print.bind(this.window), this.config.logLevel);
+        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar), this.log);
         this.tools = {};
         this.singleShot = false;
         this.messages = [];
-        switch (this.config.parserType) {
+
+        this.parser = this.initializeParser(this.config.parserType);
+    }
+
+    /**
+     * Initializes the parser based on the configuration.
+     */
+    private initializeParser(parserType: string): Parser {
+        switch (parserType) {
             case 'json':
-                this.parser = new JSONParser();
-                console.log('Using JSON parser mode');
-                break;
+                return new JSONParser();
             case 'plain':
-                this.parser = new PlainTextParser();
-                console.log('Using plain text parser mode');
-                break;
+                return new PlainTextParser();
             case 'native':
-                this.parser = new NativeParser();
-                console.log('Using native parser mode');
-                break;
+                return new NativeParser();
             default:
-                console.log('No tool parser specified!!');
-                process.exit(1);
+                throw new Error(`Unknown parser type: ${parserType}`);
         }
     }
 
@@ -60,22 +64,41 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        this.print(`Loaded ${Object.keys(this.tools).length} tools`);
+        this.log.info(`Loaded ${Object.keys(this.tools).length} tools`);
+    }
+
+    /**
+     * Handles errors consistently.
+     */
+    private handleError(context: string, error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.log.error(`${context}: ${errorMessage}`);
+        console.error(`${context}:`, error);
     }
 
     async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
         return new Promise((resolve) => {
-            this.print(`Execute ${toolName} with args: ${JSON.stringify(args)}? (y/n): `);
+            Object.entries(args).forEach(([name, value]) => {
+                this.print(name + ':\n');
+                this.print(value + '\n');
+            });
+            this.print(`Execute ${toolName}  (y/n): `);
             process.stdin.once('data', (answer: string) => {
-                const response = answer.trim();
-                resolve(/^y(es)?$/i.test(response));
+                const response = answer.trim().toLowerCase();
+                resolve(response === 'y' || response === 'yes');
             });
         });
     }
 
     processInput(input: string) {
+        if (!input.trim()) {
+            this.print('Input cannot be empty.');
+            this.showUserPrompt();
+            return;
+        }
+
+        this.print('\nGoodbye!\n');
         if (input.toLowerCase() === 'exit') {
-            this.print('\nGoodbye!\n');
             process.exit(0);
         }
 
@@ -87,11 +110,10 @@ class Agent {
         try {
             this.run();
         } catch (error) {
-            console.error('Error:', error.message);
-            console.error('Error:', error.stack);
+            this.handleError('Error processing input', error);
             this.messages.push({
                 role: 'assistant',
-                content: `Error: ${error.message}`,
+                content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
             });
         }
     }
@@ -101,6 +123,10 @@ class Agent {
     }
 
     async askQuestion(question: string) {
+        if (!question.trim()) {
+            throw new Error('Question cannot be empty.');
+        }
+
         this.print('\nQuestion: ' + question);
         this.singleShot = true;
         this.messages.push({
@@ -115,46 +141,40 @@ class Agent {
         try {
             const toolName = toolcall.name;
             const args = toolcall.arguments || {};
+
+            // Validate tool existence
             const tool = this.tools[toolName];
             if (!tool) {
                 throw new Error(`Tool ${toolName} not found`);
             }
 
+            // Log tool call
             const showArgs = Object.values(args)
                 .map((arg) => arg.substring(0, 20))
                 .join(' ');
-            this.print(`\nTOOL: ${toolName} ${showArgs}\n`);
+            this.log.debug(`\nTOOL: ${toolName} ${showArgs}\n`);
 
-            // Use safeTools from config instead of hardcoded array
+            // Check for confirmation
             if (!this.config.yoloMode && !this.config.safeTools.includes(toolName)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
-                    this.print('Operation cancelled by user.');
-                    return `Tool ${toolName} rejected by user. Ask why?`;
+                    this.log.debug('Operation cancelled by user.');
+                    return `Tool ${toolName} rejected by user.`;
                 }
             }
+
+            // Execute tool
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);
             if (result.error) {
-                this.print('Tool call error: ' + result.error);
+                const err = `Tool call ${toolName} error: ${result.error} `;
+                this.log.error(err);
+                return err;
             }
-
-            if (result !== null) {
-                let resultText = '';
-                if (result.success) {
-                    if (result.content !== undefined) {
-                        resultText = `Tool ${toolName} returned:\n${result.content}`;
-                    } else {
-                        resultText = `Tool ${toolName} executed successfully.`;
-                    }
-                } else {
-                    resultText = `Tool ${toolName} failed: ${result.error || 'Unknown error'}`;
-                }
-                return resultText;
-            }
+            return result.content;
         } catch (error) {
-            console.error(`Error executing tool ${toolcall.name}:`, error.message);
-            return `Tool execution error: ${error.message}`;
+            this.handleError(`Error executing tool ${toolcall.name}`, error);
+            return `Tool execution error: ${error instanceof Error ? error.message : 'Unknown error'}`;
         }
     }
 
@@ -180,43 +200,41 @@ class Agent {
                 );
 
                 this.print('\n');
-
                 if (response && response.stats) {
                     const stats = response.stats;
-                    // Update status bar with token stats using updateState
                     this.window.statusBar.updateState({
                         promptTokens: stats.promptTokens,
                         promptCachedTokens: stats.promptCachedTokens,
                         completionTokens: stats.completionTokens,
                         totalTokens: stats.completionTokens,
-                        tokensPerSecond: stats.tokenGenerationPerSecond,
+                        tokensPerSecond: stats.tokensPerSecond,
                         promptProcessingPerSecond: stats.promptProcessingPerSecond,
                         model: this.llm.modelConfig.model,
                     });
                 }
 
-                let toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
+                const toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
+
                 if (toolCalls.length > 0) {
                     hasToolCalls = true;
                     for (const toolCall of toolCalls) {
-                        // Set tool status before execution
                         this.window.statusBar.setTool(toolCall.name);
-
                         const result = await this.processToolCall(toolCall);
-                        if (result) {
-                            const msg = {
-                                role: 'tool',
-                                content: result,
-                            };
-                            currentMessages.push(msg);
-                        }
+                        const msg = {
+                            role: 'tool',
+                            name: toolCall.name,
+                            content: result,
+                            tool_call_id: toolCall.id,
+                        };
+                        this.log.debug(JSON.stringify(msg));
+                        currentMessages.push(msg);
 
-                        // Clear tool status after execution
                         this.window.statusBar.clearTool();
                     }
                 }
             } catch (error) {
-                console.error(`LLM Stream Error: ${error.message}`, error);
+                this.handleError('LLM Stream Error', error);
+                //currentMessages.pop();
             }
         }
 
@@ -230,9 +248,8 @@ class Agent {
         this.llm.stopRequest();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            this.print(
-                '\n🛑 Removed last message from conversation: ' +
-                    lastMessage.content.substring(0, 30),
+            this.log.debug(
+                `\n🛑 Removed last message from conversation: ${lastMessage?.content?.substring(0, 30) || 'Unknown'}\n`,
             );
         }
     }

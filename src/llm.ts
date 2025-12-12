@@ -4,18 +4,23 @@ import type { Tools, Message, LLMResponse } from './interfaces.ts';
 import Stats from './stats.ts';
 import fs from 'fs';
 import path from 'path';
+import Log from './log.ts';
 
 class LLM {
     modelConfig: any;
     abortController: AbortController | null;
     stats: Stats;
     config: any;
+    stream: boolean;
+    log: Log;
 
-    constructor(onUpdate: (state: any) => void) {
+    constructor(onUpdate: (state: any) => void, log: Log) {
         this.modelConfig = getDefaultModel();
-        this.abortController = null;
         this.stats = new Stats(onUpdate);
+        this.abortController = null;
         this.config = getConfig();
+        this.stream = true;
+        this.log = log;
     }
 
     async makeRequest(
@@ -51,11 +56,14 @@ class LLM {
             model: this.modelConfig.model,
             messages: messages,
             temperature: 0.1,
-            stream: true,
-            stream_options: { include_usage: true },
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
         };
+        if (this.stream) {
+            requestBody.stream = true;
+            requestBody.stream_options = { include_usage: true };
+        }
+
         let reader;
 
         try {
@@ -70,81 +78,99 @@ class LLM {
                 signal: controller.signal,
             });
 
-            if (!response.ok) {
-                //console.log(response);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (this.stream) {
+                if (!response.ok) {
+                    this.log.error(JSON.stringify(response));
+                    this.log.error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-            reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let fullResponse = '';
-            let reasoning = '';
+                reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+                let reasoning = '';
 
-            try {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    this.stats.incrementToken();
-                    //console.log(chunk);
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = line.slice(6);
-                            if (data.trim() === '[DONE]') continue;
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value);
+                        this.stats.incrementToken();
+                        //console.log(chunk);
+                        const lines = chunk.split('\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.slice(6);
+                                this.log.debug(data);
+                                if (data.trim() === '[DONE]') continue;
 
-                            try {
-                                const parsed = JSON.parse(data);
-                                this.stats.usage(parsed.usage);
-                                if (parsed.choices[0]?.delta?.tool_calls) {
-                                    processToolCallStream(parsed.choices[0].delta.tool_calls);
+                                try {
+                                    const parsed = JSON.parse(data);
+                                    this.stats.usage(parsed.usage);
+                                    if (parsed.choices[0]?.delta?.tool_calls) {
+                                        processToolCallStream(parsed.choices[0].delta.tool_calls);
+                                    }
+                                    const content = parsed.choices[0]?.delta?.content || '';
+                                    const reasoningContent =
+                                        parsed.choices[0]?.delta?.reasoning_content || '';
+
+                                    if (content) {
+                                        fullResponse += content;
+                                        onChunk(content);
+                                    }
+                                    if (reasoningContent.length > 0) {
+                                        reasoning += reasoningContent;
+                                        onReasoningChunk(reasoningContent);
+                                    }
+                                } catch (e) {
+                                    //console.error('\nError parsing chunk:'+ e.message+'\n');
+                                    //console.error(data);
                                 }
-                                const content = parsed.choices[0]?.delta?.content || '';
-                                const reasoningContent =
-                                    parsed.choices[0]?.delta?.reasoning_content || '';
-
-                                if (content) {
-                                    fullResponse += content;
-                                    onChunk(content);
-                                }
-                                if (reasoningContent.length > 0) {
-                                    reasoning += reasoningContent;
-                                    onReasoningChunk(reasoningContent);
-                                }
-                            } catch (e) {
-                                console.error('Error parsing chunk:', e.message);
-                                console.error(data);
                             }
                         }
                     }
-                }
-                this.stats.end();
-                //qwen3 on vllm fix
-                toolcalls.forEach((toolcall) => {
-                    const args = toolcall.function.arguments;
-                    if (args[0] != '{') {
-                        const sanitizedArgs = '{' + toolcall.function.arguments.split('{', 2)[1];
-                        toolcall.function.arguments = sanitizedArgs;
+                    this.stats.end();
+                    //qwen3 on vllm fix
+                    toolcalls.forEach((toolcall) => {
+                        const args = toolcall.function.arguments;
+                        if (args[0] != '{') {
+                            const sanitizedArgs =
+                                '{' + toolcall.function.arguments.split('{', 1)[1];
+                            toolcall.function.arguments = sanitizedArgs;
+                        }
+                    });
+                    const response = {
+                        role: 'assistant',
+                        tool_calls: toolcalls,
+                        content: '' + fullResponse,
+                    };
+
+                    messages.push(response);
+
+                    return {
+                        stats: this.stats.stats,
+                        msg: response,
+                        reasoning,
+                    };
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        throw new Error('Request was cancelled by user');
                     }
-                });
-                const response = {
-                    role: 'assistant',
-                    tool_calls: toolcalls,
-                    content: '' + fullResponse,
-                };
-
-                messages.push(response);
-
+                    throw error;
+                }
+            } else {
+                const res = await response.json();
+                try {
+                    this.log.debug(JSON.stringify(res.detail?.[0] || 'No details'));
+                } catch (e) {}
+                this.log.debug(JSON.stringify(res));
+                const msg = res.choices[0]?.message;
+                messages.push(msg);
+                this.log.debug(JSON.stringify(msg));
                 return {
                     stats: this.stats.stats,
-                    msg: response,
-                    reasoning,
+                    msg,
                 };
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    throw new Error('Request was cancelled by user');
-                }
-                throw error;
             }
         } finally {
             if (reader) reader.releaseLock();
