@@ -58,6 +58,14 @@ export function init(): void {
 
 // Export the singleton instance
 
-export const getDefaultModel = (): ModelConfig => config.models[0];
+export const getDefaultModel = (): ModelConfig => {
+    // Find the model with name property matching the provided modelName
+        const specifiedModel = config.models.find((m) => m.name === config.modelName);
+        if (specifiedModel) {
+            return specifiedModel;
+        }
+    // Fallback to the first model in the array
+    return config.models[0];
+};
 
 export const getConfig = (): Config => config;

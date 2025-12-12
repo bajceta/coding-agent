@@ -97,8 +97,8 @@ class Agent {
             return;
         }
 
-        this.print('\nGoodbye!\n');
         if (input.toLowerCase() === 'exit') {
+            this.print('\nGoodbye!\n');
             process.exit(0);
         }
 

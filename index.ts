@@ -41,6 +41,13 @@ async function main() {
             intro = false;
         } else if (args[i] === '--enable-containers') {
             config.container = true;
+        } else if (args[i] === '--model' || args[i] === '-m') {
+            // Handle --model flag
+            if (i + 1 < args.length) {
+                const modelName = args[i + 1];
+                config.modelName = modelName;
+                i++; // Skip next argument as it's the value
+            }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
             // Handle --log-file flag
             if (i + 1 < args.length) {
@@ -152,6 +159,7 @@ function printHelp() {
         '- --help, -h: Prints this help information and disables the introductory message.',
     );
     console.log('- --log-file <file>, -l <file>: Sets the log file path.');
+    console.log('- --model <name>, -m <name>: Sets the model name to use.');
     console.log('');
     console.log('Examples:');
     console.log('- ./index.ts --parser plain --log-level debug');
