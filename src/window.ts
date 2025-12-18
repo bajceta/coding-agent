@@ -1,5 +1,5 @@
 import StatusBar from './statusBar.ts';
-import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
+//import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
 import { TerminalInputHandler } from './terminalInput.ts';
 
 class Window {

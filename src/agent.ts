@@ -120,13 +120,13 @@ class Agent {
         this.print('\n\x1b[34mUser: \x1b[0m');
     }
 
-    async askQuestion(question: string) {
+    async askQuestion(question: string, interactive: boolean) {
         if (!question.trim()) {
             throw new Error('Question cannot be empty.');
         }
 
         this.print('\nQuestion: ' + question);
-        this.singleShot = true;
+        this.singleShot = !interactive;
         this.messages.push({
             role: 'user',
             content: question,

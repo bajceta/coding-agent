@@ -7,6 +7,7 @@ async function main() {
     initConfig();
     let intro = true;
     let isTTY = true;
+    let interactive = false;
     if (process.stdin.isTTY) {
         process.stdin.setRawMode(true);
         process.stdin.setEncoding('utf8');
@@ -54,6 +55,8 @@ async function main() {
                 config.logFile = args[i + 1];
                 i++; // Skip next argument as it's the value
             }
+        } else if (args[i] === '--interactive' || args[i] === '-it') {
+            interactive = true;
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }
@@ -101,11 +104,8 @@ async function main() {
 
     // Handle command line arguments
     if (question) {
-        await agent.askQuestion(question);
-        return;
-    }
-
-    if (isTTY) {
+        await agent.askQuestion(question, interactive);
+    } else if (isTTY) {
         agent.showUserPrompt();
     } else {
         if (!question) {
@@ -145,11 +145,13 @@ function printHelp() {
     );
     console.log('- --log-file <file>, -l <file>: Sets the log file path.');
     console.log('- --model <name>, -m <name>: Sets the model name to use.');
+    console.log('- --interactive, -it: Enables interactive mode. The first argument after -it becomes the initial question.');
     console.log('');
     console.log('Examples:');
     console.log('- ./index.ts --parser plain --log-level debug');
     console.log('- ./index.ts --yolo --log-file output.log');
     console.log('- ./index.ts --help');
+    console.log('- ./index.ts -it "What is the current date?"');
     console.log('');
     process.exit(0);
 }
