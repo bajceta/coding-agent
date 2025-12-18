@@ -8,7 +8,7 @@ export class NativeParser implements Parser {
         const toolcalls = [];
         if (msg.tool_calls) {
             msg.tool_calls.forEach((_toolcall) => {
-                console.log(_toolcall);
+                //console.log(_toolcall);
                 const toolcall: ToolCall = {
                     id: _toolcall.id,
                     name: _toolcall.function.name,

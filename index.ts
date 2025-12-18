@@ -59,9 +59,6 @@ async function main() {
         }
     }
 
-    const agent: Agent = new Agent(config);
-
-    await agent.init();
     if (intro) {
         console.log('Coding Agent Started');
         console.log('Press ESC twice to stop requests');
@@ -97,22 +94,10 @@ async function main() {
     /**
      * Handle ESC key presses for stopping requests
      */
-    let escCount: number = 0;
-    process.stdin.on('data', (key: string) => {
-        // ESC key is ASCII 27
-        if (key.charCodeAt(0) === 27) {
-            escCount++;
-            if (escCount >= 2) {
-                console.log('\n🛑 Stopping request...');
-                agent.stopRequest(); // Call the agent's stop method
-                escCount = 0; // Reset counter
-            } else {
-                console.log('\n⚠️ Press ESC again to stop current request');
-            }
-        } else {
-            escCount = 0; // Reset if any other key is pressed
-        }
-    });
+
+    const agent: Agent = new Agent(config);
+
+    await agent.init();
 
     // Handle command line arguments
     if (question) {

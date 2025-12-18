@@ -6,7 +6,7 @@
         "module": "nodenext",
         "rewriteRelativeImportExtensions": true,
         "erasableSyntaxOnly": true,
-        "verbatimModuleSyntax": true,
+        "verbatimModuleSyntax": true
     },
     "include": [
         "src",
@@ -21,7 +21,7 @@
         "systemPrompt.ts",
         "toolLoader.ts",
         "tools",
-        "window.ts",
+        "window.ts"
     ],
-    "exclude": ["node_modules", "dist", "test", "**/*.test.ts"],
+    "exclude": ["node_modules", "dist", "test", "**/*.test.ts"]
 }

@@ -1,18 +1,46 @@
 import StatusBar from './statusBar.ts';
+import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
+import { TerminalInputHandler } from './terminalInput.ts';
 
 class Window {
     columnPos: number;
     statusText: string;
     statusBar: StatusBar;
+    useInk: boolean;
+    userLines: number;
 
-    constructor() {
+    constructor(processInput: (text) => void, stopRequest, useInk: boolean = true) {
         this.columnPos = 0;
+        this.userLines = 0;
         this.statusText = '';
         this.statusBar = new StatusBar(this.setStatus.bind(this));
+        this.useInk = useInk;
+        const nop = () => {};
+        if (useInk) {
+            initInkTerminal();
+            const printWholeBuffer = setUserInput;
+            this.inputHandler = new TerminalInputHandler(nop, printWholeBuffer, processInput);
+        } else {
+            const printChunk = this.printUserInput.bind(this);
+            const clearUserInput = this.clearUserInput.bind(this);
+            this.inputHandler = new TerminalInputHandler(
+                printChunk,
+                nop,
+                processInput,
+                clearUserInput,
+                stopRequest,
+            );
+        }
+        this.inputHandler.setup();
     }
 
     // Render status bar (called internally)
     renderStatusBar(): void {
+        if (this.useInk) {
+            // For Ink, we'll update the status bar through our Ink interface
+            return;
+        }
+
         const rows = process.stdout.rows;
 
         // Move to status row, clear line, write text
@@ -25,10 +53,19 @@ class Window {
 
     setStatus(text: string): void {
         this.statusText = text;
-        this.renderStatusBar();
+        if (this.useInk) {
+            setStatusBarText(text);
+        } else {
+            this.renderStatusBar();
+        }
     }
 
     newline(): void {
+        if (this.useInk) {
+            // For Ink, we don't need to handle newlines manually
+            return;
+        }
+
         const rows = process.stdout.rows;
         const statusRow = rows;
         const textAreaBottom = rows - 1;
@@ -44,6 +81,12 @@ class Window {
     }
 
     printAddToLine(chunk: string): void {
+        if (this.useInk) {
+            // For Ink, we just add to the log
+            addLog(chunk);
+            return;
+        }
+
         const columns = process.stdout.columns;
         if (this.columnPos + chunk.length > columns) {
             this.newline();
@@ -52,7 +95,40 @@ class Window {
         this.columnPos += chunk.length;
     }
 
+    clearUserInput(): void {
+        const rows = process.stdout.rows;
+        const textAreaBottom = rows - 1;
+        for (let i = 0; i < this.userLines; i++) {
+            process.stdout.write(`\x1b[1T;0H\x1b[K`);
+        }
+        process.stdout.write(`\x1b[${textAreaBottom};0H`);
+        process.stdout.write('\x1b[K');
+        this.userLines = 0;
+        this.print('\x1b[34mUser: \x1b[0m');
+        this.renderStatusBar();
+    }
+
+    printUserInput(text: string): void {
+        if (text.includes('\n')) {
+            const lines = text.split('\n');
+            this.printAddToLine(lines.shift() || '');
+            for (const line of lines) {
+                this.userLines++;
+                this.newline();
+                this.printAddToLine(line);
+            }
+        } else {
+            this.printAddToLine(text);
+        }
+    }
+
     print(text: string): void {
+        if (this.useInk) {
+            // For Ink, we just add to the log
+            addLog(text);
+            return;
+        }
+
         if (text.includes('\n')) {
             const lines = text.split('\n');
             this.printAddToLine(lines.shift() || '');
@@ -68,6 +144,13 @@ class Window {
     // Expose StatusBar for external updates
     getStatusBar(): StatusBar {
         return this.statusBar;
+    }
+
+    // Method to update status bar via Ink
+    updateStatusBarInk(data: any) {
+        if (this.useInk) {
+            updateStatusBarInk(data);
+        }
     }
 }
 

@@ -9,7 +9,6 @@ import Window from './window.ts';
 import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
-import { TerminalInputHandler } from './terminalInput.ts';
 
 class Agent {
     window: Window;
@@ -24,13 +23,12 @@ class Agent {
 
     constructor(config: Config) {
         this.config = config;
-        this.window = new Window(true);
+        this.window = new Window(this.processInput.bind(this), this.stopRequest.bind(this), false);
         this.log = new Log(this.window.print.bind(this.window), this.config.logLevel);
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar), this.log);
         this.tools = {};
         this.singleShot = false;
         this.messages = [];
-
         this.parser = this.initializeParser(this.config.parserType);
     }
 
@@ -38,7 +36,7 @@ class Agent {
      * Initializes the parser based on the configuration.
      */
     private initializeParser(parserType: string): Parser {
-        this.log.info("Parser type: "+parserType);
+        this.log.info('Parser type: ' + parserType);
         switch (parserType) {
             case 'json':
                 return new JSONParser();
@@ -57,9 +55,6 @@ class Agent {
             role: 'system',
             content: systemPrompt(this.tools, this.parser.toolPrompt),
         });
-
-        this.inputHandler = new TerminalInputHandler(this);
-        this.inputHandler.setup();
     }
 
     async loadTools() {
@@ -102,6 +97,8 @@ class Agent {
             this.print('\nGoodbye!\n');
             process.exit(0);
         }
+
+        this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
 
         this.messages.push({
             role: 'user',
@@ -168,7 +165,7 @@ class Agent {
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);
             return JSON.stringify(result);
-           // if (result.error) {
+            // if (result.error) {
             //    const err = `Tool call ${toolName} error: ${result.error} `;
             //    this.log.error(err);
             //    return err;
@@ -235,8 +232,12 @@ class Agent {
                     }
                 }
             } catch (error) {
-                this.handleError('LLM Stream Error', error);
-                //currentMessages.pop();
+                if (error.name === 'AbortError') {
+                    this.log.info('User cancelled request');
+                    currentMessages.pop();
+                } else {
+                    this.handleError('LLM Stream Error', error);
+                }
             }
         }
 

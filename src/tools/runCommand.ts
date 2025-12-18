@@ -19,12 +19,12 @@ async function execute(command: string): Promise<ExecuteResult> {
                 error: stderr,
             };
         } else {
-           // console.log('Running command locally');
-            const { error, stdout, stderr } = await execPromise(command,{shell:'/bin/bash'});
+            // console.log('Running command locally');
+            const { error, stdout, stderr } = await execPromise(command, { shell: '/bin/bash' });
             return {
                 error,
                 stdout,
-                stderr
+                stderr,
             };
         }
     } catch (error) {

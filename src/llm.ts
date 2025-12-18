@@ -90,75 +90,68 @@ class LLM {
                 let fullResponse = '';
                 let reasoning = '';
 
-                try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        const chunk = decoder.decode(value);
-                        this.stats.incrementToken();
-                        //console.log(chunk);
-                        const lines = chunk.split('\n');
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.slice(6);
-                                this.log.debug(data);
-                                if (data.trim() === '[DONE]') continue;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    this.stats.incrementToken();
+                    //console.log(chunk);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.slice(6);
+                            this.log.debug(data);
+                            if (data.trim() === '[DONE]') continue;
 
-                                try {
-                                    const parsed = JSON.parse(data);
-                                    this.stats.usage(parsed.usage);
-                                    if (parsed.choices[0]?.delta?.tool_calls) {
-                                        processToolCallStream(parsed.choices[0].delta.tool_calls);
-                                    }
-                                    const content = parsed.choices[0]?.delta?.content || '';
-                                    const reasoningContent =
-                                        parsed.choices[0]?.delta?.reasoning_content || '';
-
-                                    if (content) {
-                                        fullResponse += content;
-                                        onChunk(content);
-                                    }
-                                    if (reasoningContent.length > 0) {
-                                        reasoning += reasoningContent;
-                                        onReasoningChunk(reasoningContent);
-                                    }
-                                } catch (e) {
-                                    //console.error('\nError parsing chunk:'+ e.message+'\n');
-                                    //console.error(data);
+                            try {
+                                const parsed = JSON.parse(data);
+                                this.stats.usage(parsed.usage);
+                                if (parsed.choices[0]?.delta?.tool_calls) {
+                                    processToolCallStream(parsed.choices[0].delta.tool_calls);
                                 }
+                                const content = parsed.choices[0]?.delta?.content || '';
+                                const reasoningContent =
+                                    parsed.choices[0]?.delta?.reasoning_content || '';
+
+                                if (content) {
+                                    fullResponse += content;
+                                    onChunk(content);
+                                }
+                                if (reasoningContent.length > 0) {
+                                    reasoning += reasoningContent;
+                                    onReasoningChunk(reasoningContent);
+                                }
+                            } catch (e) {
+                                //console.error('\nError parsing chunk:'+ e.message+'\n');
+                                //console.error(data);
                             }
                         }
                     }
-                    this.stats.end();
-                    //qwen3 on vllm fix
-                    toolcalls.forEach((toolcall) => {
-                        const args = toolcall.function.arguments;
-                        if (args[0] != '{') {
-                            const sanitizedArgs =
-                                '{' + toolcall.function.arguments.split('{').slice(1).join('{');
-                            console.log(sanitizedArgs);
-                            toolcall.function.arguments = sanitizedArgs;
-                        }
-                    });
-                    const response = {
-                        role: 'assistant',
-                        tool_calls: toolcalls,
-                        content: '' + fullResponse,
-                    };
-
-                    messages.push(response);
-
-                    return {
-                        stats: this.stats.stats,
-                        msg: response,
-                        reasoning,
-                    };
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        throw new Error('Request was cancelled by user');
-                    }
-                    throw error;
                 }
+                this.stats.end();
+                //qwen3 on vllm fix
+                toolcalls.forEach((toolcall) => {
+                    const args = toolcall.function.arguments;
+                    if (args[0] != '{') {
+                        const sanitizedArgs =
+                            '{' + toolcall.function.arguments.split('{').slice(1).join('{');
+                        //console.log(sanitizedArgs);
+                        toolcall.function.arguments = sanitizedArgs;
+                    }
+                });
+                const _response = {
+                    role: 'assistant',
+                    tool_calls: toolcalls,
+                    content: '' + fullResponse,
+                };
+
+                messages.push(_response);
+
+                return {
+                    stats: this.stats.stats,
+                    msg: _response,
+                    reasoning,
+                };
             } else {
                 const res = await response.json();
                 try {

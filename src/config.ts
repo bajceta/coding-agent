@@ -16,6 +16,7 @@ export interface Config {
     parserType: string;
     safeTools: string[];
     logFile: string; // Add logFile property to Config interface
+    useInk: boolean; // Add Ink support
 }
 
 const defaultConfig: Config = {
@@ -33,6 +34,7 @@ const defaultConfig: Config = {
     yoloMode: false,
     safeTools: ['readFile'],
     logFile: '', // Add default value for logFile
+    useInk: false, // Add default value for useInk
 };
 
 let config: Config = null;
@@ -60,10 +62,10 @@ export function init(): void {
 
 export const getDefaultModel = (): ModelConfig => {
     // Find the model with name property matching the provided modelName
-        const specifiedModel = config.models.find((m) => m.name === config.modelName);
-        if (specifiedModel) {
-            return specifiedModel;
-        }
+    const specifiedModel = config.models.find((m) => m.name === config.modelName);
+    if (specifiedModel) {
+        return specifiedModel;
+    }
     // Fallback to the first model in the array
     return config.models[0];
 };
