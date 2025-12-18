@@ -38,6 +38,7 @@ class Agent {
      * Initializes the parser based on the configuration.
      */
     private initializeParser(parserType: string): Parser {
+        this.log.info("Parser type: "+parserType);
         switch (parserType) {
             case 'json':
                 return new JSONParser();
@@ -166,12 +167,13 @@ class Agent {
             // Execute tool
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);
-            if (result.error) {
-                const err = `Tool call ${toolName} error: ${result.error} `;
-                this.log.error(err);
-                return err;
-            }
-            return result.content;
+            return JSON.stringify(result);
+           // if (result.error) {
+            //    const err = `Tool call ${toolName} error: ${result.error} `;
+            //    this.log.error(err);
+            //    return err;
+            //}
+            //return result.content;
         } catch (error) {
             this.handleError(`Error executing tool ${toolcall.name}`, error);
             return `Tool execution error: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -196,7 +198,7 @@ class Agent {
                     currentMessages,
                     this.tools,
                     this.print.bind(this),
-                    (chunk: string) => process.stdout.write('\x1b[31m' + chunk + '\x1b[0m'),
+                    (chunk: string) => this.print('\x1b[31m' + chunk + '\x1b[0m'),
                 );
 
                 this.print('\n');

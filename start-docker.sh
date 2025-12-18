@@ -3,6 +3,8 @@
 # Check if running in home directory
 HOME_DIR="$HOME"
 CURRENT_DIR="$PWD"
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+echo "Script directory (relative): $SCRIPT_DIR"
 
 # Check if current directory is exactly the home directory (not a subdirectory)
 if [[ "$CURRENT_DIR" == "$HOME_DIR" ]]; then
@@ -20,15 +22,18 @@ if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$1" != "--yes-i-am-sure" ]]; then
     fi
 fi
 
+REST=${@:1}
 if [[ "$1" == "--yes-i-am-sure" ]]; then
     echo "WARNING WARNING WARNING YOLO MODE, NO QUESTIONS ASKED FOR TOOL CALLS"
+    REST=${@:2}
 fi
 
 # Run the docker command
 docker run -it --rm \
-    -v $HOME/src/innercore/agent2:/agent \
+    -v $SCRIPT_DIR:/agent \
     -v $HOME/.config/codingagent.json:/home/node/.config/codingagent.json \
     --user $(id -u):$(id -g) \
     -v $PWD:/workspace \
+    -v $HOME/agent_work:/workspace/agent \
     -w /workspace \
-    agent-runner:1 /agent/index.ts --yolo --disable-containers --no-intro
+    agent-runner:1 /agent/index.ts --yolo --disable-containers --no-intro $REST

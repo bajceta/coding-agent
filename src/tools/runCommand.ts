@@ -6,12 +6,12 @@ const execPromise = util.promisify(exec);
 
 async function execute(command: string): Promise<ExecuteResult> {
     const cwd = process.cwd();
-    console.log('Running command: ' + command);
+    //console.log('Running command: ' + command);
 
     try {
         if (getConfig().container) {
-            console.log('Running command in Docker');
-            const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 sh -c '${command}'`;
+            //console.log('Running command in Docker');
+            const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 bash -c '${command}'`;
             const { stdout, stderr } = await execPromise(dockerCommand);
             return {
                 success: true,
@@ -19,12 +19,12 @@ async function execute(command: string): Promise<ExecuteResult> {
                 error: stderr,
             };
         } else {
-            console.log('Running command locally');
-            const { stdout, stderr } = await execPromise(command);
+           // console.log('Running command locally');
+            const { error, stdout, stderr } = await execPromise(command,{shell:'/bin/bash'});
             return {
-                success: true,
-                content: stdout,
-                error: stderr,
+                error,
+                stdout,
+                stderr
             };
         }
     } catch (error) {

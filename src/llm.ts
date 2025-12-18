@@ -135,7 +135,8 @@ class LLM {
                         const args = toolcall.function.arguments;
                         if (args[0] != '{') {
                             const sanitizedArgs =
-                                '{' + toolcall.function.arguments.split('{', 1)[1];
+                                '{' + toolcall.function.arguments.split('{').slice(1).join('{');
+                            console.log(sanitizedArgs);
                             toolcall.function.arguments = sanitizedArgs;
                         }
                     });

@@ -166,4 +166,5 @@ function printHelp() {
     console.log('- ./index.ts --yolo --log-file output.log');
     console.log('- ./index.ts --help');
     console.log('');
+    process.exit(0);
 }
