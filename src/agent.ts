@@ -98,7 +98,7 @@ class Agent {
             process.exit(0);
         }
 
-        this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
+        //this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
 
         this.messages.push({
             role: 'user',
