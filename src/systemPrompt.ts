@@ -19,6 +19,7 @@ If you encounter an error, analyze it carefully and suggest fixes.
         prompt += `
 If you need information from files or system commands, use the appropriate tool.
 ${toolPrompt(tools)}
+If the user rejects a tool, ask the user why.
 `;
     }
 

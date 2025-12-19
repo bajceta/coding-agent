@@ -1,3 +1,5 @@
+import { getConfig } from './config.ts'; // Import config singleton
+
 interface StatusBarState {
     promptTokens: number;
     completionTokens?: number;
@@ -48,9 +50,12 @@ class StatusBar {
             status: 'Ready',
             yoloMode: false, // Initialize YOLO mode as false
         };
+        const config = getConfig();
+        this.state.yoloMode = config.yoloMode;
         this.lastUpdate = Date.now();
         this.tokenCount = 0;
         this.onUpdate = onUpdate;
+        this.onUpdate(this.getText());
     }
 
     // Set currently running tool

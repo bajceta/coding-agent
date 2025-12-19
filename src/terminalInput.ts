@@ -127,7 +127,6 @@ export class TerminalInputHandler {
             if (code === 25) {
                 if (this.agent) {
                     this.agent.toggleYoloMode();
-                    this.printChunk('\n');
                 }
                 return;
             }
