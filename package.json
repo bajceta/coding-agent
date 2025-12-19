@@ -2,13 +2,13 @@
     "name": "codingagent",
     "version": "1.0.0",
     "description": "A coding agent with dynamic tool discovery and OpenAI-compatible LLM support",
-    "author": "",
     "license": "ISC",
-    "type": "module",
-    "main": "index.js",
+    "author": "",
     "bin": {
         "codingagent": "./index.js"
     },
+    "type": "module",
+    "main": "index.js",
     "scripts": {
         "start": "node index.js",
         "fmt": "npx --yes oxfmt@latest",

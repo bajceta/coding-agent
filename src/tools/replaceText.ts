@@ -46,11 +46,13 @@ async function execute(_path: string, oldText: string, newText: string): Promise
 
 // Export module
 export default {
-    description: 'Replace partial text in a file. Use only for shorter texts, up to 10 lines. For complete file use writeFile instead.',
+    description:
+        'Replace partial text in a file. Use only for shorter texts, up to 10 lines. For complete file use writeFile instead.',
     arguments: [
         { path: 'path to the file to modify' },
         { oldText: 'text to be replaced' },
         { newText: 'replacement text' },
     ],
     execute,
+    enabled: false,
 };

@@ -150,7 +150,9 @@ function printHelp() {
     );
     console.log('- --log-file <file>, -l <file>: Sets the log file path.');
     console.log('- --model <name>, -m <name>: Sets the model name to use.');
-    console.log('- --interactive, -it: Enables interactive mode. The first argument after -it becomes the initial question.');
+    console.log(
+        '- --interactive, -it: Enables interactive mode. The first argument after -it becomes the initial question.',
+    );
     console.log('');
     console.log('Examples:');
     console.log('- ./index.ts --parser plain --log-level debug');

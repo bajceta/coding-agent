@@ -9,6 +9,7 @@ interface StatusBarState {
     currentlyRunningTool: string | null;
     model: string | null;
     status: string;
+    yoloMode: boolean; // Add YOLO mode status
 }
 
 interface UpdateCallback {
@@ -45,6 +46,7 @@ class StatusBar {
             currentlyRunningTool: null,
             model: null,
             status: 'Ready',
+            yoloMode: false, // Initialize YOLO mode as false
         };
         this.lastUpdate = Date.now();
         this.tokenCount = 0;
@@ -98,6 +100,7 @@ class StatusBar {
             currentlyRunningTool,
             model,
             status,
+            yoloMode,
         } = this.state;
 
         let text = '';
@@ -123,6 +126,11 @@ class StatusBar {
         // Model name - cyan for system information
         if (model) {
             text += ` | ${CYAN}Model: ${model}${RESET}`;
+        }
+
+        // YOLO mode status - magenta for mode status
+        if (yoloMode !== undefined) {
+            text += ` | ${MAGENTA}YOLO: ${yoloMode ? 'ON' : 'OFF'}${RESET}`;
         }
 
         // Status message - color based on status type

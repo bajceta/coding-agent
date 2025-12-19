@@ -11,7 +11,7 @@ class Window {
     userLines: number;
     agentLines: number;
 
-    constructor(processInput: (text) => void, stopRequest, useInk: boolean = true) {
+    constructor(processInput: (text) => void, stopRequest, useInk: boolean = true, agent?: any) {
         this.columnPos = 0;
         this.userLines = 0;
         this.agentLines = 0;
@@ -22,7 +22,12 @@ class Window {
         if (useInk) {
             initInkTerminal();
             const printWholeBuffer = setUserInput;
-            this.inputHandler = new TerminalInputHandler(nop, printWholeBuffer, processInput);
+            this.inputHandler = new TerminalInputHandler(
+                nop,
+                printWholeBuffer,
+                processInput,
+                agent,
+            );
         } else {
             const printChunk = this.printUserInput.bind(this);
             const clearUserInput = this.clearUserInput.bind(this);
@@ -32,6 +37,7 @@ class Window {
                 processInput,
                 clearUserInput,
                 stopRequest,
+                agent,
             );
         }
         this.inputHandler.setup();
@@ -97,7 +103,7 @@ class Window {
         process.stdout.write(chunk);
         this.columnPos += chunk.length;
     }
-    
+
     startAgent(): void {
         this.agentLines = 0;
     }

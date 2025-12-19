@@ -42,4 +42,5 @@ export default {
     description: 'Read the contents of a file',
     arguments: [{ path: 'path to the file to read' }],
     execute,
+    enabled: true,
 };

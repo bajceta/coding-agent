@@ -38,7 +38,13 @@ async function execute(command: string): Promise<ExecuteResult> {
 
 // Export module
 export default {
-    description: 'Run a bash command',
+    description: `Run a bash command.
+Replace shorter texts in files with 'sed -i'.
+Find text in files using 'ag'.
+Find files in project with 'find'.
+Always ignore node_modules.
+`,
     arguments: [{ command: 'bash command to execute' }],
     execute,
+    enabled: true,
 };

@@ -17,7 +17,8 @@ async function execute(_path: string, content: string): Promise<ExecuteResult> {
         }
 
         // Write file content
-        await fs.promises.writeFile(resolvedPath, content, 'utf8');
+        if (typeof content === 'string') await fs.promises.writeFile(resolvedPath, content, 'utf8');
+        else await fs.promises.writeFile(resolvedPath, JSON.stringify(content), 'utf8');
         return {
             success: true,
             content: 'ok',
@@ -37,4 +38,5 @@ export default {
     description: 'Write content to a file',
     arguments: [{ path: 'path to the file to write' }, { content: 'content to write to the file' }],
     execute,
+    enabled: true,
 };

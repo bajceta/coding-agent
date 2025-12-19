@@ -23,7 +23,12 @@ class Agent {
 
     constructor(config: Config) {
         this.config = config;
-        this.window = new Window(this.processInput.bind(this), this.stopRequest.bind(this), false);
+        this.window = new Window(
+            this.processInput.bind(this),
+            this.stopRequest.bind(this),
+            false,
+            this,
+        );
         this.log = new Log(this.window.print.bind(this.window), this.config.logLevel);
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar), this.log);
         this.tools = {};
@@ -146,9 +151,14 @@ class Agent {
                 throw new Error(`Tool ${toolName} not found`);
             }
 
+            this.log.debug(`\nTOOL: ${toolName} ${JSON.stringify(args)}\n`);
+
             // Log tool call
             const showArgs = Object.values(args)
-                .map((arg) => arg.substring(0, 20))
+                .map((arg) => {
+                    if (typeof arg === 'string') return arg?.substring(0, 20);
+                    else return JSON.stringify(arg).substring(0, 20);
+                })
                 .join(' ');
             this.log.debug(`\nTOOL: ${toolName} ${showArgs}\n`);
 
@@ -169,7 +179,7 @@ class Agent {
             //    const err = `Tool call ${toolName} error: ${result.error} `;
             //    this.log.error(err);
             //    return err;
-            //}
+            // }
             //return result.content;
         } catch (error) {
             this.handleError(`Error executing tool ${toolcall.name}`, error);
@@ -259,6 +269,26 @@ class Agent {
                 `\n🛑 Removed last message from conversation: ${lastMessage?.content?.substring(0, 30) || 'Unknown'}\n`,
             );
         }
+    }
+
+    /**
+     * Toggle YOLO mode on/off and update status bar
+     */
+    toggleYoloMode() {
+        this.config.yoloMode = !this.config.yoloMode;
+
+        if (this.config.yoloMode) {
+            this.window.statusBar.setStatus('YOLO Mode: ON');
+            this.print('\n⚠️ YOLO mode enabled: All tools will be allowed without confirmation');
+        } else {
+            this.window.statusBar.setStatus('YOLO Mode: OFF');
+            this.print('\n✅ YOLO mode disabled');
+        }
+
+        // Update the status bar text to show current mode
+        this.window.statusBar.updateState({
+            status: this.config.yoloMode ? 'YOLO Mode: ON' : 'YOLO Mode: OFF',
+        });
     }
 }
 

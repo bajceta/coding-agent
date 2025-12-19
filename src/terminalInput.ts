@@ -8,13 +8,21 @@ export class TerminalInputHandler {
     private historyIndex: number = -1; // Track position in history
     private history: string[] = []; // Store command history
 
-    constructor(printChunk, printWholeBuffer, processInput, clearUserInput, stopRequest) {
+    constructor(
+        printChunk,
+        printWholeBuffer,
+        processInput,
+        clearUserInput,
+        stopRequest,
+        agent?: Agent,
+    ) {
         this.stdin = process.stdin;
         this.printChunk = printChunk;
         this.printWholeBuffer = printWholeBuffer;
         this.processInput = processInput;
         this.clearUserInput = clearUserInput;
         this.stopRequest = stopRequest;
+        this.agent = agent;
         this.userInput = [];
     }
 
@@ -115,6 +123,15 @@ export class TerminalInputHandler {
                 return;
             }
 
+            // Handle Ctrl+Y key (ASCII 25)
+            if (code === 25) {
+                if (this.agent) {
+                    this.agent.toggleYoloMode();
+                    this.printChunk('\n');
+                }
+                return;
+            }
+
             if (code === 27) {
                 escCount++;
                 if (escCount >= 2) {
@@ -135,7 +152,9 @@ export class TerminalInputHandler {
         });
 
         this.stdin.on('end', () => {
-            this.agent.print('\nInput ended');
+            if (this.agent) {
+                this.agent.print('\nInput ended');
+            }
             console.log('\nInput ended');
         });
     }

@@ -100,7 +100,7 @@ class LLM {
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6);
-                            this.log.debug(data);
+                            this.log.trace(data);
                             if (data.trim() === '[DONE]') continue;
 
                             try {
@@ -160,7 +160,7 @@ class LLM {
                 this.log.debug(JSON.stringify(res));
                 const msg = res.choices[0]?.message;
                 messages.push(msg);
-                this.log.debug(JSON.stringify(msg));
+                //this.log.debug(JSON.stringify(msg));
                 return {
                     stats: this.stats.stats,
                     msg,

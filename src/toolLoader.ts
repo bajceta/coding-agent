@@ -22,7 +22,9 @@ async function loadTools(): Promise<Tools> {
                         arguments: toolModule.default.arguments,
                         execute: toolModule.default.execute,
                     };
-                    tools[toolName] = tool;
+                    if (toolModule.default.enabled === true) {
+                        tools[toolName] = tool;
+                    }
                 } catch (error) {
                     console.error(`Failed to load tool ${toolName}:`, error.message);
                 }
