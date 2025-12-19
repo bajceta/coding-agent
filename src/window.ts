@@ -51,12 +51,12 @@ class Window {
         }
 
         const rows = process.stdout.rows;
+        const columns = process.stdout.columns;
 
         // Move to status row, clear line, write text
         process.stdout.write('\x1b[s'); // Save cursor position
         process.stdout.write(`\x1b[${rows};1H\x1b[K`);
-        process.stdout.write(this.statusText);
-        //process.stdout.write(`Tokens/s: ${this.lastTokensPerSecond.toFixed(2)}`);
+        process.stdout.write(this.statusText.substring(0, columns));
         process.stdout.write('\x1b[u'); // Restore cursor position
     }
 

@@ -277,17 +277,9 @@ class Agent {
     toggleYoloMode() {
         this.config.yoloMode = !this.config.yoloMode;
 
-        if (this.config.yoloMode) {
-            this.window.statusBar.setStatus('YOLO Mode: ON');
-            this.print('\n⚠️ YOLO mode enabled: All tools will be allowed without confirmation');
-        } else {
-            this.window.statusBar.setStatus('YOLO Mode: OFF');
-            this.print('\n✅ YOLO mode disabled');
-        }
-
         // Update the status bar text to show current mode
         this.window.statusBar.updateState({
-            status: this.config.yoloMode ? 'YOLO Mode: ON' : 'YOLO Mode: OFF',
+            yoloMode: this.config.yoloMode,
         });
     }
 }

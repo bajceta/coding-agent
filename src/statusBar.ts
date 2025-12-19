@@ -105,8 +105,13 @@ class StatusBar {
 
         let text = '';
 
+        // YOLO mode status - magenta for mode status
+        if (yoloMode !== undefined) {
+            text += `${MAGENTA}YOLO: ${yoloMode ? 'ON' : 'OFF'}${RESET}`;
+        }
+
         // Tokens count - green for positive values
-        text += `${GREEN}Tokens: ${promptTokens}(P) ${promptCachedTokens}(C) ${totalTokens}(T)${RESET}`;
+        text += `| ${GREEN}Tokens: ${promptTokens}(P) ${promptCachedTokens}(C) ${totalTokens}(T)${RESET}`;
 
         // Tokens per second - blue for performance metrics
         if (tokensPerSecond > 0) {
@@ -123,16 +128,6 @@ class StatusBar {
             text += ` | ${YELLOW}Tool: ${currentlyRunningTool}${RESET}`;
         }
 
-        // Model name - cyan for system information
-        if (model) {
-            text += ` | ${CYAN}Model: ${model}${RESET}`;
-        }
-
-        // YOLO mode status - magenta for mode status
-        if (yoloMode !== undefined) {
-            text += ` | ${MAGENTA}YOLO: ${yoloMode ? 'ON' : 'OFF'}${RESET}`;
-        }
-
         // Status message - color based on status type
         if (status) {
             if (status.includes('Error') || status.includes('error')) {
@@ -146,6 +141,10 @@ class StatusBar {
             }
         }
 
+        // Model name - cyan for system information
+        if (model) {
+            text += ` | ${CYAN}Model: ${model}${RESET}`;
+        }
         return text;
     }
 }
