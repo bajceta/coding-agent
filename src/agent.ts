@@ -53,7 +53,7 @@ class Agent {
         await this.loadTools();
         this.messages.push({
             role: 'system',
-            content: systemPrompt(this.tools, this.parser.toolPrompt),
+            content: systemPrompt(this.tools, this.parser.toolPrompt, this.config.rulesFile),
         });
     }
 
@@ -191,12 +191,16 @@ class Agent {
 
             try {
                 this.print('\n\x1b[32mAgent:\n\x1b[0m');
+                this.window.startAgent();
                 response = await this.llm.makeRequest(
                     currentMessages,
                     this.tools,
                     this.print.bind(this),
                     (chunk: string) => this.print('\x1b[31m' + chunk + '\x1b[0m'),
                 );
+
+                this.window.clearAgentInput();
+                this.window.print(response.msg.content);
 
                 this.print('\n');
                 if (response && response.stats) {

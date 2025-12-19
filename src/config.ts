@@ -17,6 +17,7 @@ export interface Config {
     safeTools: string[];
     logFile: string; // Add logFile property to Config interface
     useInk: boolean; // Add Ink support
+    rulesFile: string; // Add rules file property
 }
 
 const defaultConfig: Config = {
@@ -35,6 +36,7 @@ const defaultConfig: Config = {
     safeTools: ['readFile'],
     logFile: '', // Add default value for logFile
     useInk: false, // Add default value for useInk
+    rulesFile: '', // Add default value for rulesFile
 };
 
 let config: Config = null;

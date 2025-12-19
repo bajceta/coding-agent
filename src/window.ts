@@ -1,4 +1,5 @@
 import StatusBar from './statusBar.ts';
+import MarkdownParser from './markdownParser.ts';
 //import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
 import { TerminalInputHandler } from './terminalInput.ts';
 
@@ -8,10 +9,12 @@ class Window {
     statusBar: StatusBar;
     useInk: boolean;
     userLines: number;
+    agentLines: number;
 
     constructor(processInput: (text) => void, stopRequest, useInk: boolean = true) {
         this.columnPos = 0;
         this.userLines = 0;
+        this.agentLines = 0;
         this.statusText = '';
         this.statusBar = new StatusBar(this.setStatus.bind(this));
         this.useInk = useInk;
@@ -94,6 +97,22 @@ class Window {
         process.stdout.write(chunk);
         this.columnPos += chunk.length;
     }
+    
+    startAgent(): void {
+        this.agentLines = 0;
+    }
+
+    clearAgentInput(): void {
+        const rows = process.stdout.rows;
+        const textAreaBottom = rows - 1;
+        for (let i = 0; i < this.agentLines; i++) {
+            process.stdout.write(`\x1b[1T;0H\x1b[K`);
+        }
+        process.stdout.write(`\x1b[${textAreaBottom};0H`);
+        process.stdout.write('\x1b[K');
+        this.agentLines = 0;
+        this.renderStatusBar();
+    }
 
     clearUserInput(): void {
         const rows = process.stdout.rows;
@@ -129,15 +148,19 @@ class Window {
             return;
         }
 
-        if (text.includes('\n')) {
-            const lines = text.split('\n');
+        // Parse markdown before printing
+        const formattedText = MarkdownParser.parse(text);
+
+        if (formattedText.includes('\n')) {
+            const lines = formattedText.split('\n');
             this.printAddToLine(lines.shift() || '');
             for (const line of lines) {
+                this.agentLines++;
                 this.newline();
                 this.printAddToLine(line);
             }
         } else {
-            this.printAddToLine(text);
+            this.printAddToLine(formattedText);
         }
     }
 

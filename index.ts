@@ -29,7 +29,7 @@ async function main() {
         } else if (args[i] === '--log-level' || args[i] === '-L') {
             if (i + 1 < args.length) {
                 config.logLevel = args[i + 1];
-                i++; // Skip next argument as it's the value
+                i++;
             }
         } else if (args[i] === '--yolo' || args[i] === '-y') {
             config.yoloMode = true;
@@ -47,16 +47,21 @@ async function main() {
             if (i + 1 < args.length) {
                 const modelName = args[i + 1];
                 config.modelName = modelName;
-                i++; // Skip next argument as it's the value
+                i++;
             }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
             // Handle --log-file flag
             if (i + 1 < args.length) {
                 config.logFile = args[i + 1];
-                i++; // Skip next argument as it's the value
+                i++;
             }
         } else if (args[i] === '--interactive' || args[i] === '-it') {
             interactive = true;
+        } else if (args[i] === '--rules' || args[i] === '-r') {
+            if (i + 1 < args.length) {
+                config.rulesFile = args[i + 1];
+                i++;
+            }
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
         }

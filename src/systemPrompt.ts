@@ -1,6 +1,7 @@
 import type { Tools } from './interfaces.ts';
+import fs from 'fs';
 
-function systemPrompt(tools: Tools, toolPrompt: (tools: Tools) => string): string {
+function systemPrompt(tools: Tools, toolPrompt: (tools: Tools) => string, rulesFile?: string): string {
     const basePrompt = `
 You are a helpful coding assistant. State only facts that you are sure of.
 When asked to write code, provide complete, working examples with proper formatting.
@@ -19,6 +20,11 @@ Replace shorter texts with sed -i
 If you need information from files or system commands, use the appropriate tool.
 ${toolPrompt(tools)}
 `;
+    }
+
+    if (rulesFile && fs.existsSync(rulesFile)) {
+        const rulesContent = fs.readFileSync(rulesFile, 'utf8');
+        prompt += `\n${rulesContent}\n`;
     }
     return prompt;
 }
