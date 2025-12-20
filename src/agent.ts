@@ -41,7 +41,7 @@ class Agent {
      * Initializes the parser based on the configuration.
      */
     private initializeParser(parserType: string): Parser {
-        this.log.info('Parser type: ' + parserType);
+        this.log.info('Parser type: ' + parserType + '\n');
         switch (parserType) {
             case 'json':
                 return new JSONParser();
@@ -65,7 +65,7 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        this.log.info(`Loaded ${Object.keys(this.tools).length} tools`);
+        this.log.info(`Loaded ${Object.keys(this.tools).length} tools\n`);
     }
 
     /**
@@ -151,7 +151,7 @@ class Agent {
                 throw new Error(`Tool ${toolName} not found`);
             }
 
-            this.log.debug(`\nTOOL: ${toolName} ${JSON.stringify(args)}\n`);
+            this.log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
 
             // Log tool call
             const showArgs = Object.values(args)
@@ -160,10 +160,10 @@ class Agent {
                     else return JSON.stringify(arg).substring(0, 20);
                 })
                 .join(' ');
-            this.log.debug(`\nTOOL: ${toolName} ${showArgs}\n`);
+            this.print(`\x1b[32mTOOL: ${toolName} ${showArgs}\x1b[0m\n`);
 
             // Check for confirmation
-            if (!this.config.yoloMode && !this.config.safeTools.includes(toolName)) {
+            if (!(this.config.yoloMode || tool.safe)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
                     this.log.debug('Operation cancelled by user.');

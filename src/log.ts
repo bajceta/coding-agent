@@ -7,6 +7,7 @@ class Log {
     constructor(print: (text) => void, logLevel: string = 'info') {
         this.print = print;
         this.logLevel = logLevel;
+        print('Log level: ' + logLevel + '\n');
     }
 
     trace(message: string): void {

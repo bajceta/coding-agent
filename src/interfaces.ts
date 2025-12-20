@@ -3,6 +3,7 @@ export interface Tool {
     description: string;
     arguments: Record<string, string>[];
     execute: (...args: string[]) => Promise<any> | any;
+    safe?: boolean;
 }
 
 export type Tools = Record<string, Tool>;

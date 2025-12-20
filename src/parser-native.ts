@@ -32,11 +32,11 @@ export function openaiTools(_tools: Tools): OpenaiToolDef[] {
     for (const [toolName, tool] of Object.entries(_tools)) {
         const properties = {};
         const required = [];
-
-        for (const key of Object.keys(tool.arguments || {})) {
-            properties[key] = { type: 'string' };
-            required.push(key);
-        }
+        tool.arguments.forEach((argObj) => {
+            const [name, description] = Object.entries(argObj)[0];
+            properties[name] = { type: 'string', description };
+            required.push(name);
+        });
 
         tools.push({
             type: 'function',

@@ -21,6 +21,7 @@ async function loadTools(): Promise<Tools> {
                         description: toolModule.default.description,
                         arguments: toolModule.default.arguments,
                         execute: toolModule.default.execute,
+                        safe: toolModule.default.safe,
                     };
                     if (toolModule.default.enabled === true) {
                         tools[toolName] = tool;

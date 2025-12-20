@@ -43,4 +43,5 @@ export default {
     arguments: [{ path: 'path to the file to read' }],
     execute,
     enabled: true,
+    safe: true,
 };

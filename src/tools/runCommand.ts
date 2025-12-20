@@ -41,8 +41,7 @@ export default {
     description: `Run a bash command.
 Replace shorter texts in files with 'sed -i'.
 Find text in files using 'ag'.
-Find files in project with 'find'.
-Always ignore node_modules.
+Always ignore node_modules and .git folders.
 `,
     arguments: [{ command: 'bash command to execute' }],
     execute,
