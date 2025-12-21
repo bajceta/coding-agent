@@ -78,10 +78,10 @@ class Agent {
     }
 
     async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
-        let path = "";
+        let path = '';
         return new Promise((resolve) => {
             Object.entries(args).forEach(([name, value]) => {
-                if (name==='path') {
+                if (name === 'path') {
                     path = value;
                 }
                 this.print(name + ':\n');
