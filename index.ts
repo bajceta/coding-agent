@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import Agent from './src/agent.ts';
-import { init as initConfig, getConfig } from './src/config.ts'; // Import config singleton
+import { init as initConfig, getConfig } from './src/config.ts';
+import type Agent from './src/agent.ts';
 
 async function main() {
     initConfig();
@@ -97,11 +97,7 @@ async function main() {
         console.log(`📝 Log file set to: ${config.logFile}`);
     }
 
-    /**
-     * Handle ESC key presses for stopping requests
-     */
-
-    const agent: Agent = new Agent(config);
+    const agent: Agent = new (await import('./src/agent.ts')).default(config);
 
     await agent.init();
 

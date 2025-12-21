@@ -57,6 +57,7 @@ export class TerminalInputHandler {
                 // ENTER key (CR)
                 if (this.prompt) {
                     this.prompt(this.buffer);
+                    this.prompt = null;
                 } else {
                     if (this.buffer.length > 0) {
                         this.history.push(this.buffer);

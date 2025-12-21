@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import Log from './log.ts';
-const log = Log.get();
+const log = Log.get('lspManager');
 
 interface LSPMessage {
     jsonrpc: string;

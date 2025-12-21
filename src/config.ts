@@ -69,4 +69,9 @@ export const getDefaultModel = (): ModelConfig => {
     return config.models[0];
 };
 
-export const getConfig = (): Config => config;
+export const getConfig = (): Config => {
+    if (!config) {
+        init();
+    }
+    return config;
+};

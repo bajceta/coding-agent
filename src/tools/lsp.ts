@@ -4,7 +4,7 @@ import { spawnSync } from 'child_process';
 import LSPManager from '../lspManager.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 import Log from '../log.ts';
-const log = Log.get();
+const log = Log.get('lsp');
 
 interface LSPConfig {
     serverPath?: string;

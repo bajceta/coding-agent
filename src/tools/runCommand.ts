@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import type { ExecuteResult } from '../interfaces.ts';
 import { getConfig } from '../config.ts';
 import Log from '../log.ts';
-const log = Log.get();
+const log = Log.get('runCommand');
 
 const execRun = (cmd, options = {}) => {
     return new Promise((resolve) => {

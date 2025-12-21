@@ -10,6 +10,8 @@ import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
 
+const log = Log.get('agent');
+
 class Agent {
     window: Window;
     llm: LLM;
@@ -18,7 +20,6 @@ class Agent {
     singleShot: boolean;
     messages: Message[];
     config: Config;
-    log: Log;
 
     constructor(config: Config) {
         this.config = config;
@@ -28,8 +29,7 @@ class Agent {
             false,
             this,
         );
-        this.log = new Log(this.window.print.bind(this.window), this.config.logLevel);
-        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar), this.log);
+        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.tools = {};
         this.singleShot = false;
         this.messages = [];
@@ -40,7 +40,7 @@ class Agent {
      * Initializes the parser based on the configuration.
      */
     private initializeParser(parserType: string): Parser {
-        this.log.info('Parser type: ' + parserType + '\n');
+        log.info('Parser type: ' + parserType + '\n');
         switch (parserType) {
             case 'json':
                 return new JSONParser();
@@ -64,7 +64,7 @@ class Agent {
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        this.log.info(`Loaded ${Object.keys(this.tools).length} tools\n`);
+        log.info(`Loaded ${Object.keys(this.tools).length} tools\n`);
     }
 
     /**
@@ -72,7 +72,7 @@ class Agent {
      */
     private handleError(context: string, error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        this.log.error(`${context}: ${errorMessage}`);
+        log.error(`${context}: ${errorMessage}`);
         console.error(`${context}:`, error);
     }
 
@@ -82,7 +82,7 @@ class Agent {
             if (name === 'path') {
                 path = value;
             }
-            this.print(name + ':\n');
+            this.print(name + '\n');
             this.print(value + '\n');
         });
         this.print(`Execute ${toolName} ${path}  (y/n): `);
@@ -164,19 +164,19 @@ class Agent {
             if (!(this.config.yoloMode || tool.safe)) {
                 const confirm = await this.askForConfirmation(toolName, args);
                 if (!confirm) {
-                    this.log.debug('Operation cancelled by user.');
+                    log.debug('Operation cancelled by user.');
                     return `Tool ${toolName} rejected by user.`;
                 }
             }
 
-            this.log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
+            log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
             // Execute tool
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);
             return JSON.stringify(result);
             // if (result.error) {
             //    const err = `Tool call ${toolName} error: ${result.error} `;
-            //    this.log.error(err);
+            //    log.error(err);
             //    return err;
             // }
             //return result.content;
@@ -209,7 +209,7 @@ class Agent {
                 );
 
                 this.window.clearAgentInput();
-                this.window.print(response.msg.content);
+                this.print(response.msg.content);
 
                 this.print('\n');
                 if (response && response.stats) {
@@ -238,7 +238,7 @@ class Agent {
                             content: result,
                             tool_call_id: toolCall.id,
                         };
-                        this.log.debug(JSON.stringify(msg));
+                        log.debug(JSON.stringify(msg));
                         currentMessages.push(msg);
 
                         this.window.statusBar.clearTool();
@@ -246,7 +246,7 @@ class Agent {
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    this.log.info('User cancelled request');
+                    log.info('User cancelled request');
                     currentMessages.pop();
                 } else {
                     this.handleError('LLM Stream Error', error);
@@ -264,8 +264,8 @@ class Agent {
         this.llm.stopRequest();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            this.log.debug(
-                `\n🛑 Removed last message from conversation: ${lastMessage?.content?.substring(0, 30) || 'Unknown'}\n`,
+            log.debug(
+                `Removed last message from conversation: ${lastMessage?.content?.substring(0, 30) || 'Unknown'}`,
             );
         }
     }

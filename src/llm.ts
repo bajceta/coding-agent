@@ -5,6 +5,7 @@ import Stats from './stats.ts';
 import fs from 'fs';
 import path from 'path';
 import Log from './log.ts';
+const log = Log.get('llm');
 
 class LLM {
     modelConfig: any;
@@ -12,15 +13,13 @@ class LLM {
     stats: Stats;
     config: any;
     stream: boolean;
-    log: Log;
 
-    constructor(onUpdate: (state: any) => void, log: Log) {
+    constructor(onUpdate: (state: any) => void) {
         this.modelConfig = getDefaultModel();
         this.stats = new Stats(onUpdate);
         this.abortController = null;
         this.config = getConfig();
         this.stream = true;
-        this.log = log;
     }
 
     async makeRequest(
@@ -80,8 +79,8 @@ class LLM {
 
             if (this.stream) {
                 if (!response.ok) {
-                    this.log.error(JSON.stringify(response));
-                    this.log.error(`HTTP error! status: ${response.status}`);
+                    log.error(JSON.stringify(response));
+                    log.error(`HTTP error! status: ${response.status}`);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
@@ -99,7 +98,7 @@ class LLM {
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6);
-                            this.log.trace(data);
+                            log.trace(data);
                             if (data.trim() === '[DONE]') continue;
 
                             try {
@@ -121,9 +120,7 @@ class LLM {
                                     onReasoningChunk(reasoningContent);
                                 }
                             } catch (error) {
-                                this.log.error(
-                                    'Failed parsing: ' + data + ' error ' + error.message,
-                                );
+                                log.error('Failed parsing: ' + data + ' error ' + error.message);
                             }
                         }
                     }
@@ -154,12 +151,12 @@ class LLM {
             } else {
                 const res = await response.json();
                 try {
-                    this.log.debug(JSON.stringify(res.detail?.[0] || 'No details'));
+                    log.debug(JSON.stringify(res.detail?.[0] || 'No details'));
                 } catch {}
-                this.log.debug(JSON.stringify(res));
+                log.debug(JSON.stringify(res));
                 const msg = res.choices[0]?.message;
                 messages.push(msg);
-                //this.log.debug(JSON.stringify(msg));
+                //log.debug(JSON.stringify(msg));
                 return {
                     stats: this.stats.stats,
                     msg,
