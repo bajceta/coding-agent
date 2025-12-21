@@ -1,5 +1,4 @@
 import { spawn } from 'child_process';
-import { createInterface } from 'readline';
 import { EventEmitter } from 'events';
 import * as path from 'path';
 import Log from './log.ts';
@@ -48,7 +47,6 @@ class LSPManager extends EventEmitter {
         super();
 
         this.config = {
-            serverPath: 'vtsls',
             serverPath: 'typescript-language-server',
             serverArgs: ['--stdio', '--log-level', '4'],
             workspacePath: process.cwd(),
@@ -99,7 +97,7 @@ class LSPManager extends EventEmitter {
                         } else if (message.result || message.error) {
                             this.emit('response', message);
                         }
-                    } catch (e) {
+                    } catch {
                         // Silently ignore parsing errors for LSP messages
                     }
                 });
@@ -111,12 +109,12 @@ class LSPManager extends EventEmitter {
 
             // Handle process errors
             this.process.stderr.on('data', (data) => {
-                log.error('LSP stderr:', data.toString());
+                log.error('LSP stderr:' + data.toString());
             });
 
             this.process.on('error', (error) => {
                 this.lastError = error;
-                log.error('LSP process error:', error);
+                log.error('LSP process error:' + error);
             });
 
             this.process.on('close', (code: number, signal: string) => {

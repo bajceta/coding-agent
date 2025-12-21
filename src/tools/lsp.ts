@@ -58,8 +58,10 @@ async function getLSPManager(workspacePath?: string): Promise<LSPManager> {
             );
         }
         lspManager = new LSPManager({
-            workspacePath: workspaceKey,
             config: {
+                serverPath: 'typescript-language-server',
+                serverArgs: ['--stdio', '--log-level', '4'],
+                workspacePath: workspaceKey,
                 retryCount: 3,
                 timeout: 10000,
             },
@@ -125,9 +127,6 @@ async function execute(
                 error: `Server does not support ${operation} operation`,
             };
         }
-
-        // Determine appropriate language server
-        const languageServer = lspManager.getLanguageServer(resolvedPath);
 
         // Position parameters
         const line = parseInt(args[0]) || 0;

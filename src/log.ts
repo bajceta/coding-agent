@@ -1,4 +1,4 @@
-import type { Config } from './config.ts';
+import { getConfig } from './config.ts';
 
 let singleton;
 class Log {
@@ -8,7 +8,8 @@ class Log {
     constructor(print: (text) => void, logLevel: string = 'info') {
         this.print = print;
         this.logLevel = logLevel;
-        print('Log level: ' + logLevel + '\n');
+        print('Log level: ' + logLevel + '\n'); // @ts-ignore
+        // eslint-disable-next-line no-this-alias
         singleton = this;
     }
 
@@ -42,7 +43,7 @@ class Log {
     }
     static get(): Log {
         if (!singleton) {
-            new Log(console.log.bind(console), 'debug');
+            new Log(console.log.bind(console), getConfig().logLevel);
         }
         return singleton;
     }

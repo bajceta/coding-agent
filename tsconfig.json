@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
         "allowImportingTsExtensions": true,
-        "noEmit": true, // Optional - see note below
+        "noEmit": true,
         "target": "esnext",
         "module": "nodenext",
         "rewriteRelativeImportExtensions": true,
         "erasableSyntaxOnly": true,
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "jsx": "react-jsx"
     },
     "include": [
         "src",

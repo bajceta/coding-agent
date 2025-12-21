@@ -1,7 +1,7 @@
 import runCommand from './runCommand.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 
-async function execute(path: string): Promise<ExecuteResult> {
+async function execute(): Promise<ExecuteResult> {
     return await runCommand.execute(`rg --files`);
 }
 

@@ -10,6 +10,7 @@ class Window {
     useInk: boolean;
     userLines: number;
     agentLines: number;
+    inputHandler: TerminalInputHandler; // Make inputHandler public
 
     constructor(processInput: (text) => void, stopRequest, useInk: boolean = true, agent?: any) {
         this.columnPos = 0;
@@ -20,14 +21,15 @@ class Window {
         this.useInk = useInk;
         const nop = () => {};
         if (useInk) {
-            initInkTerminal();
-            const printWholeBuffer = setUserInput;
-            this.inputHandler = new TerminalInputHandler(
-                nop,
-                printWholeBuffer,
-                processInput,
-                agent,
-            );
+            // For now, we'll comment out ink-related code since it's causing issues
+            // initInkTerminal();
+            // const printWholeBuffer = setUserInput;
+            // this.inputHandler = new TerminalInputHandler(
+            //     nop,
+            //     printWholeBuffer,
+            //     processInput,
+            //     agent,
+            // );
         } else {
             const printChunk = this.printUserInput.bind(this);
             const clearUserInput = this.clearUserInput.bind(this);
@@ -63,7 +65,7 @@ class Window {
     setStatus(text: string): void {
         this.statusText = text;
         if (this.useInk) {
-            setStatusBarText(text);
+            // setStatusBarText(text);
         } else {
             this.renderStatusBar();
         }
@@ -92,7 +94,7 @@ class Window {
     printAddToLine(chunk: string): void {
         if (this.useInk) {
             // For Ink, we just add to the log
-            addLog(chunk);
+            // addLog(chunk);
             return;
         }
 
@@ -150,7 +152,7 @@ class Window {
     print(text: string): void {
         if (this.useInk) {
             // For Ink, we just add to the log
-            addLog(text);
+            // addLog(text);
             return;
         }
 
@@ -173,13 +175,6 @@ class Window {
     // Expose StatusBar for external updates
     getStatusBar(): StatusBar {
         return this.statusBar;
-    }
-
-    // Method to update status bar via Ink
-    updateStatusBarInk(data: any) {
-        if (this.useInk) {
-            updateStatusBarInk(data);
-        }
     }
 }
 

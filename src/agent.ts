@@ -78,19 +78,17 @@ class Agent {
 
     async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
         let path = '';
-        return new Promise(async (resolve) => {
-            Object.entries(args).forEach(([name, value]) => {
-                if (name === 'path') {
-                    path = value;
-                }
-                this.print(name + ':\n');
-                this.print(value + '\n');
-            });
-            this.print(`Execute ${toolName} ${path}  (y/n): `);
-            const answer = await this.window.inputHandler.waitPrompt();
-            const response = answer.trim().toLowerCase();
-            resolve(response === 'y' || response === 'yes');
+        Object.entries(args).forEach(([name, value]) => {
+            if (name === 'path') {
+                path = value;
+            }
+            this.print(name + ':\n');
+            this.print(value + '\n');
         });
+        this.print(`Execute ${toolName} ${path}  (y/n): `);
+        const answer: string = await this.window.inputHandler.waitPrompt();
+        const response = (answer as string).trim().toLowerCase();
+        return response === 'y' || response === 'yes';
     }
 
     processInput(input: string) {

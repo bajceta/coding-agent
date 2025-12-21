@@ -7,13 +7,19 @@ export class TerminalInputHandler {
     private userInput: string[];
     private historyIndex: number = -1; // Track position in history
     private history: string[] = []; // Store command history
+    private printChunk: (chunk: string) => void;
+    private printWholeBuffer: (buffer: string) => void;
+    private processInput: (input: string) => void;
+    private clearUserInput: () => void;
+    private stopRequest: () => void;
+    private prompt: ((value: string) => void) | null = null;
 
     constructor(
-        printChunk,
-        printWholeBuffer,
-        processInput,
-        clearUserInput,
-        stopRequest,
+        printChunk: (chunk: string) => void,
+        printWholeBuffer: (buffer: string) => void,
+        processInput: (input: string) => void,
+        clearUserInput: () => void,
+        stopRequest: () => void,
         agent?: Agent,
     ) {
         this.stdin = process.stdin;
@@ -24,12 +30,11 @@ export class TerminalInputHandler {
         this.stopRequest = stopRequest;
         this.agent = agent;
         this.userInput = [];
-        this.prompt = false;
     }
 
-    waitPrompt() {
+    waitPrompt(): Promise<string> {
         this.buffer = '';
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             this.prompt = resolve;
         });
     }

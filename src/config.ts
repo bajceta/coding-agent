@@ -9,19 +9,20 @@ interface ModelConfig {
 }
 
 export interface Config {
-    logLevel: string; // Add logLevel property to Config interface
+    logLevel: string;
     yoloMode: boolean;
     models: ModelConfig[];
     container: boolean;
     parserType: string;
     safeTools: string[];
-    logFile: string; // Add logFile property to Config interface
-    useInk: boolean; // Add Ink support
-    rulesFile: string; // Add rules file property
+    logFile: string;
+    useInk: boolean;
+    rulesFile: string;
+    modelName: string;
 }
 
 const defaultConfig: Config = {
-    logLevel: 'info', // Add default value for logLevel
+    logLevel: 'info',
     models: [
         {
             name: 'default',
@@ -34,9 +35,10 @@ const defaultConfig: Config = {
     parserType: 'native',
     yoloMode: false,
     safeTools: ['readFile'],
-    logFile: '', // Add default value for logFile
-    useInk: false, // Add default value for useInk
-    rulesFile: '', // Add default value for rulesFile
+    logFile: '',
+    useInk: false,
+    rulesFile: '',
+    modelName: 'default',
 };
 
 let config: Config = null;
@@ -51,7 +53,6 @@ export function init(): void {
                 ...JSON.parse(configData),
             };
         } else {
-            // Create default configuration
             config = defaultConfig;
         }
     } catch (error) {
@@ -60,15 +61,11 @@ export function init(): void {
     }
 }
 
-// Export the singleton instance
-
 export const getDefaultModel = (): ModelConfig => {
-    // Find the model with name property matching the provided modelName
     const specifiedModel = config.models.find((m) => m.name === config.modelName);
     if (specifiedModel) {
         return specifiedModel;
     }
-    // Fallback to the first model in the array
     return config.models[0];
 };
 

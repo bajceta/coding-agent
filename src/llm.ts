@@ -60,8 +60,8 @@ class LLM {
             tool_choice: 'auto',
         };
         if (this.stream) {
-            requestBody.stream = true;
-            requestBody.stream_options = { include_usage: true };
+            requestBody['stream'] = true;
+            requestBody['stream_options'] = { include_usage: true };
         }
 
         let reader;
@@ -120,9 +120,10 @@ class LLM {
                                     reasoning += reasoningContent;
                                     onReasoningChunk(reasoningContent);
                                 }
-                            } catch (e) {
-                                //console.error('\nError parsing chunk:'+ e.message+'\n');
-                                //console.error(data);
+                            } catch (error) {
+                                this.log.error(
+                                    'Failed parsing: ' + data + ' error ' + error.message,
+                                );
                             }
                         }
                     }
@@ -154,7 +155,7 @@ class LLM {
                 const res = await response.json();
                 try {
                     this.log.debug(JSON.stringify(res.detail?.[0] || 'No details'));
-                } catch (e) {}
+                } catch {}
                 this.log.debug(JSON.stringify(res));
                 const msg = res.choices[0]?.message;
                 messages.push(msg);

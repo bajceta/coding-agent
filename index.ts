@@ -43,14 +43,12 @@ async function main() {
         } else if (args[i] === '--enable-containers') {
             config.container = true;
         } else if (args[i] === '--model' || args[i] === '-m') {
-            // Handle --model flag
             if (i + 1 < args.length) {
                 const modelName = args[i + 1];
                 config.modelName = modelName;
                 i++;
             }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
-            // Handle --log-file flag
             if (i + 1 < args.length) {
                 config.logFile = args[i + 1];
                 i++;
