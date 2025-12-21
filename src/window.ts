@@ -10,7 +10,8 @@ class Window {
     useInk: boolean;
     userLines: number;
     agentLines: number;
-    inputHandler: TerminalInputHandler; // Make inputHandler public
+    inputHandler: TerminalInputHandler;
+    ready: boolean;
 
     constructor(processInput: (text) => void, stopRequest, useInk: boolean = true, agent?: any) {
         this.columnPos = 0;
@@ -19,6 +20,7 @@ class Window {
         this.statusText = '';
         this.statusBar = new StatusBar(this.setStatus.bind(this));
         this.useInk = useInk;
+        this.ready = false;
         const nop = () => {};
         if (useInk) {
             // For now, we'll comment out ink-related code since it's causing issues
@@ -45,8 +47,13 @@ class Window {
         this.inputHandler.setup();
     }
 
+    setReady(): void  {
+        this.ready = true;
+    }
+
     // Render status bar (called internally)
     renderStatusBar(): void {
+        if (!this.ready) return;
         if (this.useInk) {
             // For Ink, we'll update the status bar through our Ink interface
             return;

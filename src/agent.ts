@@ -40,7 +40,7 @@ class Agent {
      * Initializes the parser based on the configuration.
      */
     private initializeParser(parserType: string): Parser {
-        log.info('Parser type: ' + parserType + '\n');
+        log.info('Parser type: ' + parserType);
         switch (parserType) {
             case 'json':
                 return new JSONParser();
@@ -59,12 +59,13 @@ class Agent {
             role: 'system',
             content: systemPrompt(this.tools, this.parser.toolPrompt, this.config.rulesFile),
         });
+        this.window.setReady();
     }
 
     async loadTools() {
         const tools = await loadTools();
         this.tools = tools;
-        log.info(`Loaded ${Object.keys(this.tools).length} tools\n`);
+        log.info(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
     /**
@@ -169,7 +170,7 @@ class Agent {
                 }
             }
 
-            log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
+            log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}`);
             // Execute tool
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);

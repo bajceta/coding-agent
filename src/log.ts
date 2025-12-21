@@ -12,26 +12,46 @@ class Log {
         this.print = print;
         this.logLevel = logLevel;
         this.moduleName = moduleName;
-        if (moduleName) {
-            print(`Log level for module ${moduleName}: ${logLevel}\n`);
-        } else {
-            print('Log level: ' + logLevel + '\n');
-        }
         // eslint-disable-next-line no-this-alias
         singleton = this;
     }
 
+    private printMessage(level: string, message: string): void  {
+        let coloredLevel = level;
+        switch (level) {
+            case 'trace':
+                coloredLevel = '\x1b[36m' + level + '\x1b[0m'; // Cyan
+                break;
+            case 'debug':
+                coloredLevel = '\x1b[32m' + level + '\x1b[0m'; // Green
+                break;
+            case 'info':
+                coloredLevel = '\x1b[34m' + level + '\x1b[0m'; // Blue
+                break;
+            case 'error':
+                coloredLevel = '\x1b[31m' + level + '\x1b[0m'; // Red
+                break;
+            default:
+                coloredLevel = level;
+        }
+        this.print(`${coloredLevel} - ${this.moduleName || 'unknown'} - ${message}\n`);
+    }
+
     trace(message: string): void {
         if (this.logLevel === 'trace') {
-            const prefix = this.moduleName ? `[${this.moduleName}]` : '[DEBUG]';
-            this.print(`\x1b[33m${prefix}\x1b[0m ${message}\n`);
+            this.printMessage(this.logLevel, message);
         }
     }
 
     debug(message: string): void {
         if (this.logLevel === 'debug' || this.logLevel === 'trace') {
-            const prefix = this.moduleName ? `[${this.moduleName}]` : '[DEBUG]';
-            this.print(`\x1b[33m${prefix}\x1b[0m ${message}\n`);
+             this.printMessage(this.logLevel, message);
+        }
+    }
+
+    info(message: string): void {
+        if (this.logLevel === 'info' || this.logLevel === 'debug' || this.logLevel === 'trace') {
+          this.printMessage(this.logLevel, message);
         }
     }
 
@@ -42,20 +62,12 @@ class Log {
             this.logLevel === 'info' ||
             this.logLevel === 'trace'
         ) {
-            const prefix = this.moduleName ? `[${this.moduleName}]` : '[ERROR]';
-            this.print(`\x1b[31m${prefix}\x1b[0m ${message}\n`);
+             this.printMessage(this.logLevel, message);
         }
     }
 
-    info(message: string): void {
-        if (this.logLevel === 'info' || this.logLevel === 'debug' || this.logLevel === 'trace') {
-            const prefix = this.moduleName ? `[${this.moduleName}]` : '[INFO]';
-            this.print(`\x1b[32m${prefix}\x1b[0m ${message}\n`);
-        }
-    }
 
     static get(moduleName?: string): Log {
-        // If no module name is provided, return the singleton instance
         if (!moduleName) {
             if (!singleton) {
                 new Log(console.log.bind(console), getConfig().logLevel);
@@ -63,12 +75,10 @@ class Log {
             return singleton;
         }
 
-        // If module name is provided, check if we already have a logger for this module
         if (loggers.has(moduleName)) {
             return loggers.get(moduleName)!;
         }
 
-        // Create a new logger for this module
         const newLogger = new Log(console.log.bind(console), getConfig().logLevel, moduleName);
         loggers.set(moduleName, newLogger);
         return newLogger;

@@ -208,8 +208,6 @@ class LSPManager extends EventEmitter {
             if (this.process && this.process.stdin.writable) {
                 this.process.stdin.write('Content-Length: ' + content.length + '\r\n\r\n');
                 this.process.stdin.write(content);
-                log.debug('LSP request: ' + method + ' wait for: ' + wait);
-                log.debug('Content-Length: ' + content.length + '\r\n\r\n');
                 log.debug(content);
             } else {
                 reject(new Error('LSP process not available'));
