@@ -24,6 +24,14 @@ export class TerminalInputHandler {
         this.stopRequest = stopRequest;
         this.agent = agent;
         this.userInput = [];
+        this.prompt = false;
+    }
+
+    waitPrompt() {
+        this.buffer = "";
+        return new Promise((resolve, reject) => {
+            this.prompt = resolve;
+});
     }
 
     setup() {
@@ -42,13 +50,17 @@ export class TerminalInputHandler {
 
             if (code === 13) {
                 // ENTER key (CR)
+                if (this.prompt) {
+                    this.prompt(this.buffer);
+                } else {
                 if (this.buffer.length > 0) {
                     this.history.push(this.buffer);
                 }
-                this.processInput(this.buffer);
+                    this.processInput(this.buffer);
+                    this.historyIndex = -1; // Reset history index
+                    this.printWholeBuffer(this.buffer);
+                }
                 this.buffer = '';
-                this.historyIndex = -1; // Reset history index
-                this.printWholeBuffer(this.buffer);
                 return;
             }
             if (code === 0x7f || code === 0x08) {

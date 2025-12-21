@@ -18,7 +18,6 @@ class Agent {
     singleShot: boolean;
     messages: Message[];
     config: Config;
-    inputHandler: TerminalInputHandler;
     log: Log;
 
     constructor(config: Config) {
@@ -79,7 +78,7 @@ class Agent {
 
     async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
         let path = '';
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
             Object.entries(args).forEach(([name, value]) => {
                 if (name === 'path') {
                     path = value;
@@ -88,10 +87,9 @@ class Agent {
                 this.print(value + '\n');
             });
             this.print(`Execute ${toolName} ${path}  (y/n): `);
-            process.stdin.once('data', (answer: string) => {
-                const response = answer.trim().toLowerCase();
-                resolve(response === 'y' || response === 'yes');
-            });
+            const answer = await this.window.inputHandler.waitPrompt();
+            const response = answer.trim().toLowerCase(); 
+            resolve(response === 'y' || response === 'yes');
         });
     }
 
@@ -155,7 +153,6 @@ class Agent {
                 throw new Error(`Tool ${toolName} not found`);
             }
 
-            this.log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
 
             // Log tool call
             const showArgs = Object.values(args)
@@ -175,6 +172,7 @@ class Agent {
                 }
             }
 
+            this.log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}\n`);
             // Execute tool
             const argsList: string[] = Object.values(args);
             const result: ExecuteResult = await tool.execute(...argsList);
