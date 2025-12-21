@@ -95,7 +95,6 @@ class LLM {
                     if (done) break;
                     const chunk = decoder.decode(value);
                     this.stats.incrementToken();
-                    //console.log(chunk);
                     const lines = chunk.split('\n');
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
@@ -135,7 +134,6 @@ class LLM {
                     if (args[0] != '{') {
                         const sanitizedArgs =
                             '{' + toolcall.function.arguments.split('{').slice(1).join('{');
-                        //console.log(sanitizedArgs);
                         toolcall.function.arguments = sanitizedArgs;
                     }
                 });
