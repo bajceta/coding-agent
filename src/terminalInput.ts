@@ -28,10 +28,10 @@ export class TerminalInputHandler {
     }
 
     waitPrompt() {
-        this.buffer = "";
+        this.buffer = '';
         return new Promise((resolve, reject) => {
             this.prompt = resolve;
-});
+        });
     }
 
     setup() {
@@ -53,9 +53,9 @@ export class TerminalInputHandler {
                 if (this.prompt) {
                     this.prompt(this.buffer);
                 } else {
-                if (this.buffer.length > 0) {
-                    this.history.push(this.buffer);
-                }
+                    if (this.buffer.length > 0) {
+                        this.history.push(this.buffer);
+                    }
                     this.processInput(this.buffer);
                     this.historyIndex = -1; // Reset history index
                     this.printWholeBuffer(this.buffer);

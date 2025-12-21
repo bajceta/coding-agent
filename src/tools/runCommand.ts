@@ -39,7 +39,7 @@ async function execute(command: string): Promise<ExecuteResult> {
 // Export module
 export default {
     description: `Run a bash command.
-Replace shorter texts in files with 'sed -i'.
+Replace shorter texts in files with 'sed -i' instead of writeFile tool.
 Find text in files using 'ag'.
 Always ignore node_modules and .git folders.
 `,

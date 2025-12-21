@@ -88,7 +88,7 @@ class Agent {
             });
             this.print(`Execute ${toolName} ${path}  (y/n): `);
             const answer = await this.window.inputHandler.waitPrompt();
-            const response = answer.trim().toLowerCase(); 
+            const response = answer.trim().toLowerCase();
             resolve(response === 'y' || response === 'yes');
         });
     }
@@ -152,7 +152,6 @@ class Agent {
             if (!tool) {
                 throw new Error(`Tool ${toolName} not found`);
             }
-
 
             // Log tool call
             const showArgs = Object.values(args)

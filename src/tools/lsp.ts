@@ -69,6 +69,7 @@ async function getLSPManager(workspacePath?: string): Promise<LSPManager> {
             await lspManager.connect();
             await lspManager.initialize(workspaceKey);
             lspManagers.set(workspaceKey, lspManager);
+            log.debug('CREATED lsp manager for ' + workspaceKey);
         } catch (connectError) {
             throw new Error(`Failed to initialize LSP connection: ${connectError.message}`);
         }
@@ -102,6 +103,7 @@ async function execute(
         }
 
         const resolvedPath = path.resolve(filePath);
+        //const resolvedPath = filePath;
         const workspacePath = path.dirname(resolvedPath);
 
         const lspManager = await getLSPManager(workspacePath);

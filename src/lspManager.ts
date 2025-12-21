@@ -48,7 +48,7 @@ class LSPManager extends EventEmitter {
         super();
 
         this.config = {
-            //serverPath: 'vtsls',
+            serverPath: 'vtsls',
             serverPath: 'typescript-language-server',
             serverArgs: ['--stdio', '--log-level', '4'],
             workspacePath: process.cwd(),
@@ -88,7 +88,6 @@ class LSPManager extends EventEmitter {
                 log.debug('lsp stdout:' + data);
                 const lines = data.split('\n');
                 lines.forEach((line) => {
-                    log.debug('process line: ' + line);
                     try {
                         const message: LSPMessage = JSON.parse(line);
                         if (message.id !== undefined && this.pendingRequests.has(message.id)) {
@@ -133,7 +132,7 @@ class LSPManager extends EventEmitter {
                     log.error('LSP timeout');
                     //reject(new Error('LSP initialization timeout'));
                     resolve();
-                }, 300);
+                }, 3000);
 
                 const handler = (message: LSPMessage) => {
                     if (message.method === 'window/logMessage') {
@@ -183,9 +182,6 @@ class LSPManager extends EventEmitter {
         });
 
         if (response.result) {
-            //            log.debug(JSON.stringify(response));
-            //           log.debug(JSON.stringify(response.result));
-            //          log.debug(JSON.stringify(response.result.capabilities));
             this.serverCapabilities = response.result.capabilities || {};
             this.initialized = true;
             this.emit('initialized');
@@ -239,8 +235,11 @@ class LSPManager extends EventEmitter {
             params,
         };
 
+        const content = JSON.stringify(message);
+
         if (this.process && this.process.stdin.writable) {
-            this.process.stdin.write(JSON.stringify(message) + '\n');
+            this.process.stdin.write('Content-Length: ' + content.length + '\r\n\r\n');
+            this.process.stdin.write(content);
         }
     }
 
