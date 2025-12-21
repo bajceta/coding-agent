@@ -9,7 +9,7 @@ async function execute(command: string): Promise<ExecuteResult> {
     //console.log('Running command: ' + command);
 
     try {
-        if (getConfig().container) {
+        if (getConfig()?.container) {
             //console.log('Running command in Docker');
             const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 bash -c '${command}'`;
             const { stdout, stderr } = await execPromise(dockerCommand);
@@ -46,4 +46,5 @@ Always ignore node_modules and .git folders.
     arguments: [{ command: 'bash command to execute' }],
     execute,
     enabled: true,
+    safe: false,
 };
