@@ -47,7 +47,8 @@ class LSPManager extends EventEmitter {
         super();
 
         this.config = {
-            serverPath: 'typescript-language-server',
+            // serverPath: 'typescript-language-server',
+            serverPath: 'vtsls',
             serverArgs: ['--stdio', '--log-level', '4'],
             workspacePath: process.cwd(),
             retryCount: 3,
@@ -83,11 +84,12 @@ class LSPManager extends EventEmitter {
             this.process.stdout.setEncoding('utf8');
 
             this.process.stdout.on('data', (data) => {
-                log.debug('lsp stdout:' + data);
+                //log.debug('lsp stdout:' + data);
                 const lines = data.split('\n');
                 lines.forEach((line) => {
                     try {
                         const message: LSPMessage = JSON.parse(line);
+                        log.debug(JSON.stringify(message, null, 4));
                         if (message.id !== undefined && this.pendingRequests.has(message.id)) {
                             const { resolve, reject } = this.pendingRequests.get(message.id)!;
                             this.pendingRequests.delete(message.id);
@@ -175,6 +177,7 @@ class LSPManager extends EventEmitter {
                     references: {},
                     completion: {},
                     signatureHelp: {},
+                    publishDiagnostics: {},
                 },
             },
         });

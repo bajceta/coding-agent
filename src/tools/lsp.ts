@@ -25,6 +25,7 @@ function canPerformOperation(operation: string, capabilities: any): boolean {
     const operationMap = {
         hover: 'textDocument.hover',
         definition: 'textDocument.definition',
+        implementation: 'textDocument.implementation',
         references: 'textDocument.references',
         completion: 'textDocument.completion',
         signature: 'textDocument.signatureHelp',
@@ -104,6 +105,13 @@ async function execute(
             };
         }
 
+        if (!fs.existsSync(filePath)) {
+            return {
+                success: false,
+                content: null,
+                error: `File not found: ${filePath}`,
+            };
+        }
         const resolvedPath = path.resolve(filePath);
         //const resolvedPath = filePath;
         const workspacePath = path.dirname(resolvedPath);
@@ -135,6 +143,17 @@ async function execute(
         let result: any = null;
 
         switch (operation.toLowerCase()) {
+            case 'didopen':
+                const content = await fs.promises.readFile(resolvedPath, 'utf8');
+                const openResponse = await lspManager.request('textDocument/didOpen', {
+                    textDocument: { uri: `file://${resolvedPath}` },
+                    languageId: 'typescript',
+                    text: content,
+                    version: 1,
+                });
+                result = openResponse.result;
+                break;
+
             case 'hover':
                 const hoverResponse = await lspManager.request('textDocument/hover', {
                     textDocument: { uri: `file://${resolvedPath}` },
@@ -149,6 +168,18 @@ async function execute(
                     position: { line, character },
                 });
                 result = definitionResponse.result;
+                break;
+
+            case 'implementation':
+                const implementationResponse = await lspManager.request(
+                    'textDocument/implementation',
+                    {
+                        textDocument: { uri: `file://${resolvedPath}` },
+                        position: { line, character },
+                        context: { includeDeclaration: true },
+                    },
+                );
+                result = implementationResponse.result;
                 break;
 
             case 'references':
@@ -240,7 +271,7 @@ export default {
     arguments: [
         {
             operation:
-                'operation to perform (hover, definition, references, completion, signature, diagnostics)',
+                'operation to perform (hover, definition, references, completion, signature, diagnostics, implementation)',
         },
         {
             filePath: 'path to the file (required for most operations)',
@@ -254,6 +285,6 @@ export default {
     ],
     execute,
     safe: true,
-    enabled: true,
+    enabled: false,
     cleanup,
 };
