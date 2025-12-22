@@ -3,20 +3,31 @@ import { getConfig } from './config.ts';
 let singleton;
 const loggers: Map<string, Log> = new Map();
 
+// Mapping of log levels to numbers for easier comparison
+const LOG_LEVELS = {
+    trace: 0,
+    debug: 1,
+    info: 2,
+    error: 3,
+};
+
 class Log {
     private logLevel: string;
+    private logLevelNumber: number;
     private print: (text) => void;
     private moduleName?: string;
 
     constructor(print: (text) => void, logLevel: string = 'info', moduleName?: string) {
         this.print = print;
         this.logLevel = logLevel;
+        this.logLevelNumber =
+            LOG_LEVELS[logLevel] !== undefined ? LOG_LEVELS[logLevel] : LOG_LEVELS['info'];
         this.moduleName = moduleName;
         // eslint-disable-next-line no-this-alias
         singleton = this;
     }
 
-    private printMessage(level: string, message: string): void  {
+    private printMessage(level: string, message: string): void {
         let coloredLevel = level;
         switch (level) {
             case 'trace':
@@ -38,34 +49,37 @@ class Log {
     }
 
     trace(message: string): void {
-        if (this.logLevel === 'trace') {
-            this.printMessage(this.logLevel, message);
+        if (this.logLevelNumber <= LOG_LEVELS['trace']) {
+            this.printMessage('trace', message);
         }
     }
 
     debug(message: string): void {
-        if (this.logLevel === 'debug' || this.logLevel === 'trace') {
-             this.printMessage(this.logLevel, message);
+        if (this.logLevelNumber <= LOG_LEVELS['debug']) {
+            this.printMessage('debug', message);
         }
     }
 
     info(message: string): void {
-        if (this.logLevel === 'info' || this.logLevel === 'debug' || this.logLevel === 'trace') {
-          this.printMessage(this.logLevel, message);
+        if (this.logLevelNumber <= LOG_LEVELS['info']) {
+            this.printMessage('info', message);
         }
     }
 
     error(message: string): void {
-        if (
-            this.logLevel === 'error' ||
-            this.logLevel === 'debug' ||
-            this.logLevel === 'info' ||
-            this.logLevel === 'trace'
-        ) {
-             this.printMessage(this.logLevel, message);
+        if (this.logLevelNumber <= LOG_LEVELS['error']) {
+            this.printMessage('error', message);
         }
     }
 
+    static setLogLevel(logLevel): void {
+        loggers.forEach((value, key, map) => {
+            value.logLevel = logLevel;
+            // Update the numeric log level as well
+            value.logLevelNumber =
+                LOG_LEVELS[logLevel] !== undefined ? LOG_LEVELS[logLevel] : LOG_LEVELS['info'];
+        });
+    }
 
     static get(moduleName?: string): Log {
         if (!moduleName) {

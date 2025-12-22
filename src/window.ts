@@ -47,7 +47,7 @@ class Window {
         this.inputHandler.setup();
     }
 
-    setReady(): void  {
+    setReady(): void {
         this.ready = true;
     }
 
