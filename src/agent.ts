@@ -104,6 +104,16 @@ class Agent {
             process.exit(0);
         }
 
+        if (input.toLowerCase() === '/msgs') {
+            this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
+            return;
+        }
+
+        if (input.toLowerCase() === '/pop') {
+            this.messages.pop();
+            return;
+        }
+
         //this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
 
         this.messages.push({
@@ -155,8 +165,8 @@ class Agent {
             // Log tool call
             const showArgs = Object.values(args)
                 .map((arg) => {
-                    if (typeof arg === 'string') return arg?.substring(0, 20);
-                    else return JSON.stringify(arg).substring(0, 20);
+                    if (typeof arg === 'string') return arg?.substring(0, 80);
+                    else return JSON.stringify(arg).substring(0, 80);
                 })
                 .join(' ');
             this.print(`\x1b[32mTOOL: ${toolName} ${showArgs}\x1b[0m\n`);
@@ -209,8 +219,8 @@ class Agent {
                     (chunk: string) => this.print('\x1b[31m' + chunk + '\x1b[0m'),
                 );
 
-                this.window.clearAgentInput();
-                this.print(response.msg.content);
+                //this.window.clearAgentInput();
+                //this.print(response.msg.content);
 
                 this.print('\n');
                 if (response && response.stats) {

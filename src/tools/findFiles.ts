@@ -5,7 +5,6 @@ async function execute(): Promise<ExecuteResult> {
     return await runCommand.execute(`rg --files`);
 }
 
-// Export module
 export default {
     description: 'Find files in current project',
     arguments: [],
