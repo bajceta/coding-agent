@@ -24,6 +24,6 @@ export default {
         { command: 'search and replace block for sed command' },
     ],
     execute,
-    enabled: true,
+    enabled: false,
     safe: true,
 };

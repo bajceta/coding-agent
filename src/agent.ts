@@ -29,6 +29,7 @@ class Agent {
             false,
             this,
         );
+        Log.setPrintMethod(this.window.print.bind(this.window));
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.tools = {};
         this.singleShot = false;

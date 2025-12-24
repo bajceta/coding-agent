@@ -81,6 +81,12 @@ class Log {
         });
     }
 
+    static setPrintMethod(print): void {
+        loggers.forEach((value, key, map) => {
+            value.print = print;
+        });
+    }
+
     static get(moduleName?: string): Log {
         if (!moduleName) {
             if (!singleton) {

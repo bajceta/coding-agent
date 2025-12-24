@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Tool, Tools } from './interfaces.ts';
+import Log from './log.ts';
+const log = Log.get('toolLoader');
 
 async function loadTools(): Promise<Tools> {
     const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
@@ -25,6 +27,9 @@ async function loadTools(): Promise<Tools> {
                     };
                     if (toolModule.default.enabled === true) {
                         tools[toolName] = tool;
+                        log.info('Loaded tool: ' + toolName);
+                    } else {
+                        log.info('Ignoring tool: ' + toolName);
                     }
                 } catch (error) {
                     console.error(`Failed to load tool ${toolName}:`, error.message);

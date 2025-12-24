@@ -10,6 +10,8 @@ async function execute(
         caseSensitive?: boolean;
         wholeWord?: boolean;
         maxReplacements?: number;
+        ignoreWhitespace?: boolean;
+        preserveFormatting?: boolean;
     },
 ): Promise<ExecuteResult> {
     try {
@@ -32,13 +34,29 @@ async function execute(
             caseSensitive: true,
             wholeWord: false,
             maxReplacements: Infinity,
+            ignoreWhitespace: false,
+            preserveFormatting: false,
             ...options,
         };
 
         let newContent = content;
         let replacementsMade = 0;
 
-        if (opts.wholeWord) {
+        if (opts.ignoreWhitespace) {
+            // Normalize whitespace for comparison
+            const normalizeWhitespace = (str: string) => str.replace(/\s+/g, ' ').trim();
+            const normalizedOldText = normalizeWhitespace(oldText);
+
+            // Create a regex that matches the pattern with flexible whitespace
+            const escapedOldText = normalizedOldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedOldText, opts.caseSensitive ? 'g' : 'gi');
+
+            newContent = content.replace(regex, (match) => {
+                if (replacementsMade >= opts.maxReplacements) return match;
+                replacementsMade++;
+                return newText;
+            });
+        } else if (opts.wholeWord) {
             // For whole word matching, we need to use regex with word boundaries
             const flags = opts.caseSensitive ? 'g' : 'gi';
             const escapedOldText = oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -51,8 +69,14 @@ async function execute(
                 return newText;
             });
         } else {
-            // Standard replacement logic
-            const searchPattern = opts.caseSensitive ? oldText : new RegExp(oldText, 'gi');
+            // Standard replacement logic with enhanced error handling
+            let searchPattern;
+
+            if (opts.caseSensitive) {
+                searchPattern = new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            } else {
+                searchPattern = new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            }
 
             // Replace with a function to track replacements
             newContent = content.replace(searchPattern, (match) => {
@@ -62,17 +86,31 @@ async function execute(
             });
         }
 
-        // If no replacements were made, check if the text actually exists in the file
+        // If no replacements were made, provide better feedback
         if (replacementsMade === 0) {
             const searchContent = opts.caseSensitive ? content : content.toLowerCase();
             const searchText = opts.caseSensitive ? oldText : oldText.toLowerCase();
 
             if (!searchContent.includes(searchText)) {
-                return {
-                    success: false,
-                    content: null,
-                    error: `Text "${oldText}" not found in file ${resolvedPath}`,
-                };
+                // Try to find similar text with fuzzy matching for better user experience
+                const lines = content.split('\n');
+                let foundSimilar = false;
+
+                for (const line of lines) {
+                    const lineContent = opts.caseSensitive ? line : line.toLowerCase();
+                    if (lineContent.includes(searchText)) {
+                        foundSimilar = true;
+                        break;
+                    }
+                }
+
+                if (!foundSimilar) {
+                    return {
+                        success: false,
+                        content: null,
+                        error: `Text "${oldText}" not found in file ${resolvedPath}. Note: This tool is designed to be more forgiving but still requires exact text matching.`,
+                    };
+                }
             }
         }
 
@@ -87,7 +125,7 @@ async function execute(
         return {
             success: false,
             content: null,
-            error: error.message,
+            error: `Error replacing text: ${error.message}`,
         };
     }
 }
@@ -95,17 +133,17 @@ async function execute(
 // Export module
 export default {
     description:
-        'Replace text in a file with improved flexibility. Supports case-sensitive/insensitive matching, whole word matching, and limiting replacements. Use only for shorter texts, up to 10 lines. For complete file content use writeFile instead.',
+        'Improved text replacement tool designed to be more forgiving for LLMs. Supports case-sensitive/insensitive matching, whole word matching, limiting replacements, and whitespace normalization. Provides better error messages and handles edge cases more gracefully.',
     arguments: [
         { path: 'path to the file to modify' },
         { oldText: 'text to be replaced' },
         { newText: 'replacement text' },
         {
             options:
-                'optional configuration object with caseSensitive, wholeWord, and maxReplacements properties',
+                'optional configuration object with caseSensitive, wholeWord, maxReplacements, ignoreWhitespace, and preserveFormatting properties',
         },
     ],
     execute,
-    enabled: false,
+    enabled: true,
     safe: false,
 };

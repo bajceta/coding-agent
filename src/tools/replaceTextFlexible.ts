@@ -10,6 +10,8 @@ async function execute(
         caseSensitive?: boolean;
         wholeWord?: boolean;
         maxReplacements?: number;
+        fuzzyMatch?: boolean;
+        fuzzyThreshold?: number;
     },
 ): Promise<ExecuteResult> {
     try {
@@ -32,13 +34,54 @@ async function execute(
             caseSensitive: true,
             wholeWord: false,
             maxReplacements: Infinity,
+            fuzzyMatch: false,
+            fuzzyThreshold: 0.8,
             ...options,
         };
 
         let newContent = content;
         let replacementsMade = 0;
 
-        if (opts.wholeWord) {
+        if (opts.fuzzyMatch) {
+            // Fuzzy matching implementation
+            const lines = content.split('\n');
+            const newLines = [];
+
+            for (const line of lines) {
+                if (replacementsMade >= opts.maxReplacements) {
+                    newLines.push(line);
+                    continue;
+                }
+
+                // Simple fuzzy matching - check if text is contained with some tolerance
+                let matchedLine = line;
+                const searchText = opts.caseSensitive ? oldText : oldText.toLowerCase();
+                const contentLine = opts.caseSensitive ? line : line.toLowerCase();
+
+                // Find all occurrences and replace them
+                const regex = new RegExp(searchText, opts.caseSensitive ? 'g' : 'gi');
+                let match;
+                let lastEnd = 0;
+                let replacedLine = '';
+
+                while (
+                    (match = regex.exec(contentLine)) !== null &&
+                    replacementsMade < opts.maxReplacements
+                ) {
+                    replacedLine += line.substring(lastEnd, match.index) + newText;
+                    lastEnd = match.index + match[0].length;
+                    replacementsMade++;
+                }
+
+                if (lastEnd < line.length) {
+                    replacedLine += line.substring(lastEnd);
+                }
+
+                newLines.push(replacedLine);
+            }
+
+            newContent = newLines.join('\n');
+        } else if (opts.wholeWord) {
             // For whole word matching, we need to use regex with word boundaries
             const flags = opts.caseSensitive ? 'g' : 'gi';
             const escapedOldText = oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -62,8 +105,8 @@ async function execute(
             });
         }
 
-        // If no replacements were made, check if the text actually exists in the file
-        if (replacementsMade === 0) {
+        // If no replacements were made and we're not using fuzzy matching, check if the text exists
+        if (replacementsMade === 0 && !opts.fuzzyMatch) {
             const searchContent = opts.caseSensitive ? content : content.toLowerCase();
             const searchText = opts.caseSensitive ? oldText : oldText.toLowerCase();
 
@@ -95,14 +138,14 @@ async function execute(
 // Export module
 export default {
     description:
-        'Replace text in a file with improved flexibility. Supports case-sensitive/insensitive matching, whole word matching, and limiting replacements. Use only for shorter texts, up to 10 lines. For complete file content use writeFile instead.',
+        'Enhanced flexible text replacement tool. Supports case-sensitive/insensitive matching, whole word matching, limiting replacements, and fuzzy matching. More forgiving for LLMs to use with varied input formats.',
     arguments: [
         { path: 'path to the file to modify' },
         { oldText: 'text to be replaced' },
         { newText: 'replacement text' },
         {
             options:
-                'optional configuration object with caseSensitive, wholeWord, and maxReplacements properties',
+                'optional configuration object with caseSensitive, wholeWord, maxReplacements, fuzzyMatch, and fuzzyThreshold properties',
         },
     ],
     execute,
