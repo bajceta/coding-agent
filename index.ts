@@ -2,6 +2,7 @@
 
 import { init as initConfig, getConfig } from './src/config.ts';
 import type Agent from './src/agent.ts';
+import fs from 'fs';
 
 async function main() {
     initConfig();
@@ -59,6 +60,20 @@ async function main() {
             if (i + 1 < args.length) {
                 config.rulesFile = args[i + 1];
                 i++;
+            }
+        } else if (args[i] === '--file' || args[i] === '-f') {
+            if (i + 1 < args.length) {
+                const filePath = args[i + 1];
+                try {
+                    question = fs.readFileSync(filePath, 'utf8');
+                    i++; // Skip next argument as it's the file path
+                } catch (error) {
+                    console.error(`Error reading file ${filePath}:`, error.message);
+                    process.exit(1);
+                }
+            } else {
+                console.error('Error: --file flag requires a file path argument');
+                process.exit(1);
             }
         } else if (question === undefined) {
             question = args[i]; // First non-parser argument is the question
@@ -147,12 +162,16 @@ function printHelp() {
     console.log(
         '- --interactive, -it: Enables interactive mode. The first argument after -it becomes the initial question.',
     );
+    console.log(
+        '- --file <file>, -f <file>: Reads content from a file and uses it as the question.',
+    );
     console.log('');
     console.log('Examples:');
     console.log('- ./index.ts --parser plain --log-level debug');
     console.log('- ./index.ts --yolo --log-file output.log');
     console.log('- ./index.ts --help');
     console.log('- ./index.ts -it "What is the current date?"');
+    console.log('- ./index.ts -f my_question.txt');
     console.log('');
     process.exit(0);
 }
