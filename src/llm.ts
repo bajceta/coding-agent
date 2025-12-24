@@ -43,11 +43,11 @@ class LLM {
                 let current;
                 if (!toolcalls[part.index]) {
                     toolcalls[part.index] = part;
-                    onChunk(part.function.name);
+                    onChunk('\nTOOLCALL : ' + part.function.name + '\n');
                 } else {
                     current = toolcalls[part.index];
                     current.function.arguments += part.function.arguments;
-                    onChunk(part.function.arguments);
+                    onChunk(part.function.arguments.replaceAll('\\n', '\n'));
                 }
             });
         }

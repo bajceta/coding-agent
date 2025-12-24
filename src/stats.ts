@@ -7,6 +7,7 @@ interface StatsData {
     promptCachedTokens: number;
     completionTokens: number;
     oldTokens: number;
+    totalGenerated: number;
 }
 
 interface UpdateCallback {
@@ -33,9 +34,10 @@ class Stats {
             promptCachedTokens: 0,
             completionTokens: 0,
             oldTokens: 0,
+            totalGenerated: 0,
         };
-        this.onUpdate = onUpdate;
 
+        this.onUpdate = onUpdate;
         this.startTime = null;
         this.firstTokenTime = null;
         this.totalTokens = 0;
@@ -52,6 +54,7 @@ class Stats {
     }
 
     end(): void {
+        this.stats.totalGenerated += this.totalTokens;
         //this.displayStats();
     }
 

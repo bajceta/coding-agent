@@ -164,7 +164,9 @@ class Window {
         }
 
         // Parse markdown before printing
-        const formattedText = MarkdownParser.parse(text);
+        //const formattedText = MarkdownParser.parse(text);
+        // make json content prettier
+        const formattedText = text; //.replaceAll("\\n", "\n");
 
         if (formattedText.includes('\n')) {
             const lines = formattedText.split('\n');

@@ -28,6 +28,8 @@ if [[ "$1" == "--yes-i-am-sure" ]]; then
     REST=${@:2}
 fi
 
+echo "using args:"
+echo $REST
 # Run the docker command
 docker run -it --rm \
     -v $SCRIPT_DIR:/agent \
