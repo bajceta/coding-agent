@@ -133,7 +133,7 @@ async function execute(
 // Export module
 export default {
     description:
-        'Improved text replacement tool designed to be more forgiving for LLMs. Supports case-sensitive/insensitive matching, whole word matching, limiting replacements, and whitespace normalization. Provides better error messages and handles edge cases more gracefully.',
+        'Text replacement tool. For complete file changes just use writeFile tool.',
     arguments: [
         { path: 'path to the file to modify' },
         { oldText: 'text to be replaced' },
