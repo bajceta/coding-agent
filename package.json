@@ -11,8 +11,8 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "fmt": "npx --yes oxfmt@latest",
-        "lint": "npx --yes tsc -p tsconfig.json && npx --yes oxlint@latest",
+        "fmt": "npx --yes oxfmt",
+        "lint": "npx --yes tsc -p tsconfig.json && npx --yes oxlint",
         "test": "jest"
     },
     "dependencies": {

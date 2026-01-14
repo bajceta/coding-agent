@@ -57,6 +57,7 @@ class LLM {
             //temperature: 0.1,
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
+            parallel_tool_calls: true,
         };
         if (this.stream) {
             requestBody['stream'] = true;
