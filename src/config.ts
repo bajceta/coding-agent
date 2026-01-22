@@ -31,7 +31,7 @@ const defaultConfig: Config = {
             model: 'gpt-4',
         },
     ],
-    container: true,
+    container: false,
     parserType: 'native',
     yoloMode: false,
     safeTools: ['readFile'],

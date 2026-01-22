@@ -130,7 +130,7 @@ class LLM {
                 //qwen3 on vllm fix
                 toolcalls.forEach((toolcall) => {
                     const args = toolcall.function.arguments;
-                    if (args[0] != '{') {
+                    if (args && args[0] != '{') {
                         const sanitizedArgs =
                             '{' + toolcall.function.arguments.split('{').slice(1).join('{');
                         toolcall.function.arguments = sanitizedArgs;

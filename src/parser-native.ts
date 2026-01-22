@@ -8,11 +8,17 @@ export class NativeParser implements Parser {
         const toolcalls = [];
         if (msg.tool_calls) {
             msg.tool_calls.forEach((_toolcall) => {
+                console.log(_toolcall.function);
                 const toolcall: ToolCall = {
                     id: _toolcall.id,
                     name: _toolcall.function.name,
-                    arguments: JSON.parse(_toolcall.function.arguments),
+                    arguments: {},
                 };
+                if (_toolcall.function.arguments) {
+                    toolcall.arguments = JSON.parse(_toolcall.function.arguments);
+                } else {
+                    _toolcall.function.arguments = '';
+                }
                 toolcalls.push(toolcall);
             });
         }

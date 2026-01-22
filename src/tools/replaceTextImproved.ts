@@ -132,8 +132,7 @@ async function execute(
 
 // Export module
 export default {
-    description:
-        'Text replacement tool. For complete file changes just use writeFile tool.',
+    description: 'Text replacement tool. For complete file changes just use writeFile tool.',
     arguments: [
         { path: 'path to the file to modify' },
         { oldText: 'text to be replaced' },

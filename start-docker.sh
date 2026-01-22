@@ -38,4 +38,4 @@ docker run -it --rm \
     -v $PWD:/workspace \
     -v $HOME/agent_work:/workspace/agent \
     -w /workspace \
-    agent-runner:1 /agent/index.ts --yolo --disable-containers --no-intro $REST
+    agent-runner:2 /agent/index.ts --yolo --disable-containers --no-intro $REST

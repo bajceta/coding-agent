@@ -1,5 +1,6 @@
 import type { Tools } from './interfaces.ts';
 import fs from 'fs';
+import path from 'path';
 
 function systemPrompt(
     tools: Tools,
@@ -23,10 +24,17 @@ If the user rejects a tool, ask the user why.
 `;
     }
 
-    if (rulesFile && fs.existsSync(rulesFile)) {
-        const rulesContent = fs.readFileSync(rulesFile, 'utf8');
-        prompt += `\n${rulesContent}\n`;
+    if (rulesFile) {
+        const resolvedRulesPath = path.resolve(rulesFile);
+        if (fs.existsSync(resolvedRulesPath)) {
+            const rulesContent = fs.readFileSync(resolvedRulesPath, 'utf8');
+            prompt += `\\n${rulesContent}\\n`;
+        } else {
+            console.error('Rules file does not exists' + resolvedRulesPath);
+            process.exit(1);
+        }
     }
+
     return prompt;
 }
 

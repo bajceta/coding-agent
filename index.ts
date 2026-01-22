@@ -3,6 +3,7 @@
 import { init as initConfig, getConfig } from './src/config.ts';
 import type Agent from './src/agent.ts';
 import fs from 'fs';
+import path from 'path';
 
 async function main() {
     initConfig();
@@ -36,13 +37,13 @@ async function main() {
             config.yoloMode = true;
         } else if (args[i] === '--disable-containers') {
             config.container = false;
+        } else if (args[i] === '--enable-containers') {
+            config.container = true;
         } else if (args[i] === '--no-intro') {
             intro = false;
         } else if (args[i] === '--help' || args[i] === '-h') {
             helpFlag = true;
             intro = false;
-        } else if (args[i] === '--enable-containers') {
-            config.container = true;
         } else if (args[i] === '--model' || args[i] === '-m') {
             if (i + 1 < args.length) {
                 const modelName = args[i + 1];
@@ -64,11 +65,17 @@ async function main() {
         } else if (args[i] === '--file' || args[i] === '-f') {
             if (i + 1 < args.length) {
                 const filePath = args[i + 1];
+                const resolvedPath = path.resolve(filePath);
                 try {
-                    question = fs.readFileSync(filePath, 'utf8');
+                    question +=
+                        'FilePath: ' +
+                        filePath +
+                        '\nFile start:\n' +
+                        fs.readFileSync(resolvedPath, 'utf8') +
+                        '\nFile end';
                     i++; // Skip next argument as it's the file path
                 } catch (error) {
-                    console.error(`Error reading file ${filePath}:`, error.message);
+                    console.error(`Error reading file ${resolvedPath}:`, error.message);
                     process.exit(1);
                 }
             } else {
