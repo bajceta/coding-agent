@@ -107,16 +107,18 @@ class Agent {
 
         if (input.toLowerCase() === '/msgs') {
             this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
+            this.showUserPrompt();
             return;
         }
 
         if (input.toLowerCase() === '/pop') {
             this.messages.pop();
+            this.showUserPrompt();
             return;
         }
 
         if (input.toLowerCase().startsWith('/model')) {
-            this.handleModelCommand(input);
+            this.handleModelCommand(input).then(() => this.showUserPrompt());
             return;
         }
 
@@ -160,15 +162,16 @@ class Agent {
     /**
      * Handles the /model command to list and select models.
      * Usage: /model list - List all available models
+     *        /model <number> - Select a model by number (1, 2, 3, etc.)
      *        /model <name> - Select a model by name
      */
     async handleModelCommand(input: string): Promise<void> {
         const args = input.trim().split(/\s+/);
         const command = args[0].toLowerCase();
-        const modelName = args[1];
+        const modelNameOrNumber = args[1];
 
         try {
-            if (command === '/model' && !modelName) {
+            if (command === '/model' && !modelNameOrNumber) {
                 // Show current model
                 const currentModel = this.llm.modelConfig;
                 this.print(`\nCurrent model: ${currentModel.name}\n`);
@@ -177,8 +180,8 @@ class Agent {
                 return;
             }
 
-            if (command === '/model' && modelName) {
-                // Fetch models to find the selected one
+            if (command === '/model' && modelNameOrNumber) {
+                // Fetch models
                 const modelsData = await this.llm.fetchModels();
                 const models = modelsData.data || [];
 
@@ -186,30 +189,48 @@ class Agent {
                     throw new Error('Invalid models response format');
                 }
 
-                // Find the model by name
-                const model = models.find(
-                    (m: any) => m.id.toLowerCase() === modelName.toLowerCase(),
-                );
+                // Check if input is a number
+                const numberIndex = parseInt(modelNameOrNumber, 10);
+                if (!isNaN(numberIndex) && numberIndex >= 1 && numberIndex <= models.length) {
+                    // Select model by number
+                    const model = models[numberIndex - 1];
 
-                if (model) {
                     // Update the config
-                    this.config.modelName = modelName;
+                    this.config.modelName = model.id;
                     this.llm.updateModelConfig(model);
 
                     this.print(`\n✓ Model switched to: ${model.id}\n`);
                     this.print(
-                        `  Base URL: ${this.config.models.find((m: any) => m.name === modelName)?.baseUrl}\n`,
+                        `  Base URL: ${this.config.models.find((m: any) => m.name === model.id)?.baseUrl}\n`,
                     );
                     this.print(`  ID: ${model.id}\n`);
                 } else {
-                    // List all available models if not found
-                    this.print(`\nModel '${modelName}' not found. Available models:\n`);
-                    models.forEach((m: any) => {
-                        this.print(`  - ${m.id}\n`);
-                    });
+                    // Try to find the model by name
+                    const model = models.find(
+                        (m: any) => m.id.toLowerCase() === modelNameOrNumber.toLowerCase(),
+                    );
+
+                    if (model) {
+                        // Update the config
+                        this.config.modelName = model.id;
+                        this.llm.updateModelConfig(model);
+
+                        this.print(`\n✓ Model switched to: ${model.id}\n`);
+                        this.print(
+                            `  Base URL: ${this.config.models.find((m: any) => m.name === model.id)?.baseUrl}\n`,
+                        );
+                        this.print(`  ID: ${model.id}\n`);
+                    } else {
+                        // List all available models if not found
+                        this.print(`\nModel '${modelNameOrNumber}' not found. Available models:\n`);
+                        models.forEach((m: any, index: number) => {
+                            this.print(`  ${index + 1}. ${m.id}\n`);
+                        });
+                    }
                 }
             } else {
                 this.print(`\nUsage: /model list - List all available models\n`);
+                this.print(`       /model <number> - Select a model by number (1, 2, 3, etc.)\n`);
                 this.print(`       /model <name> - Select a model by name\n`);
                 this.print(`       /model        - Show current model\n`);
             }

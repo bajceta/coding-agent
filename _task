@@ -1,0 +1,11 @@
+Add /model command to agent.ts to select a new model.
+Fetch models from the current llm model /v1/models endpoint that returns data in OpenAI compatible format.
+Read files:
+agent.ts
+llm.ts
+config.ts
+
+Selected model should be stored in config
+
+
+
