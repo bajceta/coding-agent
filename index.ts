@@ -67,6 +67,7 @@ async function main() {
                 const filePath = args[i + 1];
                 const resolvedPath = path.resolve(filePath);
                 try {
+                    if (!question) question = '';
                     question +=
                         'FilePath: ' +
                         filePath +

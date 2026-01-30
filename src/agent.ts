@@ -181,6 +181,7 @@ class Agent {
                 }
             }
 
+            this.print(`\x1b[32mRunning tool: ${toolName}\x1b[0m\n`);
             log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}`);
             // Execute tool
             const argsList: string[] = Object.values(args);
