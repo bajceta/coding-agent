@@ -115,6 +115,11 @@ class Agent {
             return;
         }
 
+        if (input.toLowerCase().startsWith('/model')) {
+            this.handleModelCommand(input);
+            return;
+        }
+
         //this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
 
         this.messages.push({
@@ -150,6 +155,67 @@ class Agent {
         });
 
         await this.run();
+    }
+
+    /**
+     * Handles the /model command to list and select models.
+     * Usage: /model list - List all available models
+     *        /model <name> - Select a model by name
+     */
+    async handleModelCommand(input: string): Promise<void> {
+        const args = input.trim().split(/\s+/);
+        const command = args[0].toLowerCase();
+        const modelName = args[1];
+
+        try {
+            if (command === '/model' && !modelName) {
+                // Show current model
+                const currentModel = this.llm.modelConfig;
+                this.print(`\nCurrent model: ${currentModel.name}\n`);
+                this.print(`Base URL: ${currentModel.baseUrl}\n`);
+                this.print(`Model ID: ${currentModel.model}\n`);
+                return;
+            }
+
+            if (command === '/model' && modelName) {
+                // Fetch models to find the selected one
+                const modelsData = await this.llm.fetchModels();
+                const models = modelsData.data || [];
+
+                if (!Array.isArray(models)) {
+                    throw new Error('Invalid models response format');
+                }
+
+                // Find the model by name
+                const model = models.find(
+                    (m: any) => m.id.toLowerCase() === modelName.toLowerCase(),
+                );
+
+                if (model) {
+                    // Update the config
+                    this.config.modelName = modelName;
+                    this.llm.updateModelConfig(model);
+
+                    this.print(`\n✓ Model switched to: ${model.id}\n`);
+                    this.print(
+                        `  Base URL: ${this.config.models.find((m: any) => m.name === modelName)?.baseUrl}\n`,
+                    );
+                    this.print(`  ID: ${model.id}\n`);
+                } else {
+                    // List all available models if not found
+                    this.print(`\nModel '${modelName}' not found. Available models:\n`);
+                    models.forEach((m: any) => {
+                        this.print(`  - ${m.id}\n`);
+                    });
+                }
+            } else {
+                this.print(`\nUsage: /model list - List all available models\n`);
+                this.print(`       /model <name> - Select a model by name\n`);
+                this.print(`       /model        - Show current model\n`);
+            }
+        } catch (error) {
+            this.handleError('Error processing /model command', error);
+        }
     }
 
     async processToolCall(toolcall: ToolCall): Promise<string> {

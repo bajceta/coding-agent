@@ -179,6 +179,42 @@ class LLM {
             this.abortController = null;
         }
     }
+
+    /**
+     * Fetches available models from the OpenAI-compatible /v1/models endpoint.
+     * @returns Promise with the models data
+     */
+    async fetchModels(): Promise<any> {
+        try {
+            const response = await fetch(`${this.modelConfig.baseUrl}/models`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${this.modelConfig.apiKey}`,
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch models: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            log.error(
+                `Error fetching models: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Updates the model configuration for this LLM instance.
+     * @param modelConfig The new model configuration
+     */
+    updateModelConfig(modelConfig: any): void {
+        this.config.models[0].model = modelConfig.id;
+    }
 }
 
 export default LLM;
