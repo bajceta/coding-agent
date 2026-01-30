@@ -89,6 +89,7 @@ class LLM {
                 const decoder = new TextDecoder();
                 let fullResponse = '';
                 let reasoning = '';
+                let newlineInserted = false;
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -113,6 +114,10 @@ class LLM {
                                     parsed.choices[0]?.delta?.reasoning_content || '';
 
                                 if (content) {
+                                    if (!newlineInserted) {
+                                        onChunk('\n');
+                                        newlineInserted = true;
+                                    }
                                     fullResponse += content;
                                     onChunk(content);
                                 }
