@@ -20,6 +20,7 @@ class Agent {
     singleShot: boolean;
     messages: Message[];
     config: Config;
+    private loadedImageData: { base64: string; mimeType: string; fileName: string } | null = null;
 
     constructor(config: Config) {
         this.config = config;
@@ -122,11 +123,39 @@ class Agent {
             return;
         }
 
+        if (input.toLowerCase().startsWith('/img')) {
+            this.handleImgCommand(input).then(() => this.showUserPrompt());
+            return;
+        }
+
+        if (input.toLowerCase().startsWith('/clearimg')) {
+            this.clearLoadedImage();
+            this.showUserPrompt();
+            return;
+        }
+
         //this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
+
+        const loadedImage = this.getLoadedImageData();
+        let content: any = input;
+
+        if (loadedImage) {
+            this.print(`\n\x1b[33mIncluding loaded image: ${loadedImage.fileName}\x1b[0m\n`);
+            content = [
+                { type: 'text', text: input },
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:${loadedImage.mimeType};base64,${loadedImage.base64}`,
+                    },
+                },
+            ];
+            this.clearLoadedImage();
+        }
 
         this.messages.push({
             role: 'user',
-            content: input,
+            content,
         });
 
         try {
@@ -239,6 +268,118 @@ class Agent {
         }
     }
 
+    /**
+     * Handles the /img command to load an image and prepare it for the next prompt
+     * Usage: /img <filename.jpg> or /img <filename.png> etc.
+     */
+    async handleImgCommand(input: string): Promise<void> {
+        const args = input.trim().split(/\s+/);
+        const command = args[0].toLowerCase();
+        const fileName = args[1];
+
+        try {
+            // Validate that a filename was provided
+            if (!fileName) {
+                this.print('\nUsage: /img <filename>\n');
+                this.print('Example: /img photo.jpg\n');
+                return;
+            }
+
+            // Load the image file
+            const imageData = await this.loadImageToBase64(fileName);
+
+            // Store in memory
+            this.loadedImageData = imageData;
+
+            this.print(`\n✓ Image loaded successfully!\n`);
+            this.print(`File: ${fileName}\n`);
+            this.print(`MIME type: ${imageData.mimeType}\n`);
+            this.print(
+                `Size: ${((imageData.base64.length * 3) / 4 / 1024 / 1024).toFixed(2)} MB\n`,
+            );
+            this.print(`Base64 length: ${imageData.base64.length.toLocaleString()} characters\n`);
+            this.print(
+                '\nThe image is now stored in memory and will be included in the next prompt.\n',
+            );
+        } catch (error) {
+            this.handleError('Error processing /img command', error);
+            this.print(
+                `\nFailed to load image: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
+            );
+        }
+    }
+
+    /**
+     * Loads an image file and converts it to base64 format
+     */
+    private async loadImageToBase64(
+        fileName: string,
+    ): Promise<{ base64: string; mimeType: string; fileName: string }> {
+        const fs = await import('fs');
+        const path = await import('path');
+
+        // Check if file exists
+        const fullPath = path.resolve(fileName);
+        if (!fs.existsSync(fullPath)) {
+            throw new Error(`Image file not found: ${fileName}`);
+        }
+
+        // Get file extension
+        const ext = path.extname(fileName).toLowerCase();
+
+        // Read file as buffer
+        const imageBuffer = fs.readFileSync(fullPath);
+
+        // Convert to base64
+        const base64Image = imageBuffer.toString('base64');
+
+        // Get MIME type
+        const mimeType = this.getMimeType(ext);
+
+        return {
+            base64: base64Image,
+            mimeType,
+            fileName,
+        };
+    }
+
+    /**
+     * Returns the MIME type for a given file extension
+     */
+    private getMimeType(extension: string): string {
+        const mimeTypes: Record<string, string> = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.bmp': 'image/bmp',
+            '.tiff': 'image/tiff',
+            '.ico': 'image/x-icon',
+        };
+        return mimeTypes[extension] || 'image/jpeg';
+    }
+
+    /**
+     * Retrieves the loaded image data and prepares it for the next LLM request
+     * Returns null if no image is loaded
+     */
+    getLoadedImageData(): { base64: string; mimeType: string; fileName: string } | null {
+        return this.loadedImageData;
+    }
+
+    /**
+     * Clears the loaded image from memory
+     */
+    clearLoadedImage() {
+        if (this.loadedImageData) {
+            //this.print(`\n\x1b[33mCleared loaded image: ${this.loadedImageData.fileName}\x1b[0m\n`);
+            this.loadedImageData = null;
+        } else {
+            this.print(`\nNo image is currently loaded.\n`);
+        }
+    }
+
     async processToolCall(toolcall: ToolCall): Promise<string> {
         try {
             const toolName = toolcall.name;
@@ -301,6 +442,9 @@ class Agent {
             try {
                 this.print('\n\x1b[32mAgent:\n\x1b[0m');
                 this.window.startAgent();
+
+                // Add loaded image data to the last user message if available
+
                 response = await this.llm.makeRequest(
                     currentMessages,
                     this.tools,
@@ -364,9 +508,11 @@ class Agent {
         this.llm.stopRequest();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
-            log.debug(
-                `Removed last message from conversation: ${lastMessage?.content?.substring(0, 30) || 'Unknown'}`,
-            );
+            const contentPreview =
+                typeof lastMessage?.content === 'string'
+                    ? lastMessage.content.substring(0, 30)
+                    : 'Array content';
+            log.debug(`Removed last message from conversation: ${contentPreview || 'Unknown'}`);
         }
     }
 
