@@ -94,48 +94,7 @@ class Agent {
         return response === 'y' || response === 'yes';
     }
 
-    processInput(input: string) {
-        if (!input.trim()) {
-            this.print('Input cannot be empty.');
-            this.showUserPrompt();
-            return;
-        }
-
-        if (input.toLowerCase() === 'exit') {
-            this.print('\nGoodbye!\n');
-            process.exit(0);
-        }
-
-        if (input.toLowerCase() === '/msgs') {
-            this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
-            this.showUserPrompt();
-            return;
-        }
-
-        if (input.toLowerCase() === '/pop') {
-            this.messages.pop();
-            this.showUserPrompt();
-            return;
-        }
-
-        if (input.toLowerCase().startsWith('/model')) {
-            this.handleModelCommand(input).then(() => this.showUserPrompt());
-            return;
-        }
-
-        if (input.toLowerCase().startsWith('/img')) {
-            this.handleImgCommand(input).then(() => this.showUserPrompt());
-            return;
-        }
-
-        if (input.toLowerCase().startsWith('/clearimg')) {
-            this.clearLoadedImage();
-            this.showUserPrompt();
-            return;
-        }
-
-        //this.window.print('\n\x1b[34mUser: \x1b[0m' + input);
-
+    process(input: string) {
         const loadedImage = this.getLoadedImageData();
         let content: any = input;
 
@@ -166,6 +125,128 @@ class Agent {
                 role: 'assistant',
                 content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
             });
+        }
+    }
+
+    processInput(input: string) {
+        let done = false;
+        if (!input.trim()) {
+            this.print('Input cannot be empty.');
+            this.showUserPrompt();
+            return;
+        }
+
+        if (input.toLowerCase() === 'exit') {
+            this.print('\nGoodbye!\n');
+            process.exit(0);
+        }
+
+        if (input.toLowerCase() === '/msgs') {
+            this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
+            this.showUserPrompt();
+            return;
+        }
+
+        if (input.toLowerCase() === '/pop') {
+            this.messages.pop();
+            this.showUserPrompt();
+            return;
+        }
+
+        if (input.toLowerCase().startsWith('/model')) {
+            this.handleModelCommand(input).then(() => this.showUserPrompt());
+            return;
+        }
+
+        if (input.toLowerCase().startsWith('/clearimg')) {
+            this.clearLoadedImage();
+            this.showUserPrompt();
+            return;
+        }
+
+        // Handle @filename syntax
+        if (input.startsWith('@')) {
+            this.handleFileInput(input).then((content) => {
+                if (content != 'image') {
+                    this.process(content);
+                } else {
+                    this.showUserPrompt();
+                }
+            });
+        } else {
+            this.process(input);
+        }
+    }
+
+    /**
+     * Handles the @filename syntax to load file contents as input
+     */
+    async handleFileInput(input: string): Promise<string> {
+        const fileName = input.substring(1).trim();
+        if (!fileName) {
+            this.print('\nUsage: @filename\n');
+            this.print('Example: @README.md\n');
+            return;
+        }
+
+        try {
+            // Check if file exists
+            const fs = await import('fs');
+            const path = await import('path');
+            const fullPath = path.resolve(fileName);
+
+            if (!fs.existsSync(fullPath)) {
+                this.print(`\nFile not found: ${fileName}\n`);
+                return;
+            }
+
+            // Get file extension
+            const ext = path.extname(fileName).toLowerCase();
+            const extWithoutDot = ext.substring(1).toLowerCase();
+
+            // Check if it's an image file
+            const imageExtensions = [
+                '.png',
+                '.jpg',
+                '.jpeg',
+                '.gif',
+                '.webp',
+                '.bmp',
+                '.tiff',
+                '.ico',
+            ];
+            if (imageExtensions.includes(ext.toLowerCase())) {
+                // Handle as image like /img command
+                const imageData = await this.loadImageToBase64(fileName);
+                this.loadedImageData = imageData;
+                this.print(`\n✓ Image loaded successfully!\n`);
+                this.print(`File: ${fileName}\n`);
+                this.print(`MIME type: ${imageData.mimeType}\n`);
+                this.print(
+                    `Size: ${((imageData.base64.length * 3) / 4 / 1024 / 1024).toFixed(2)} MB\n`,
+                );
+                this.print(
+                    `Base64 length: ${imageData.base64.length.toLocaleString()} characters\n`,
+                );
+                this.print(
+                    '\nThe image is now stored in memory and will be included in the next prompt.\n',
+                );
+                return 'image';
+            } else {
+                // Load as text file
+                const fileContent = fs.readFileSync(fullPath, 'utf-8');
+                const content = `filename: ${fileName}, content: ${fileContent}`;
+
+                this.print(`\n✓ File loaded successfully!\n`);
+                this.print(`File: ${fileName}\n`);
+                this.print(`Content length: ${fileContent.length.toLocaleString()} characters\n`);
+                return content;
+            }
+        } catch (error) {
+            this.handleError('Error processing @filename command', error);
+            this.print(
+                `\nFailed to load file: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
+            );
         }
     }
 
@@ -265,47 +346,6 @@ class Agent {
             }
         } catch (error) {
             this.handleError('Error processing /model command', error);
-        }
-    }
-
-    /**
-     * Handles the /img command to load an image and prepare it for the next prompt
-     * Usage: /img <filename.jpg> or /img <filename.png> etc.
-     */
-    async handleImgCommand(input: string): Promise<void> {
-        const args = input.trim().split(/\s+/);
-        const command = args[0].toLowerCase();
-        const fileName = args[1];
-
-        try {
-            // Validate that a filename was provided
-            if (!fileName) {
-                this.print('\nUsage: /img <filename>\n');
-                this.print('Example: /img photo.jpg\n');
-                return;
-            }
-
-            // Load the image file
-            const imageData = await this.loadImageToBase64(fileName);
-
-            // Store in memory
-            this.loadedImageData = imageData;
-
-            this.print(`\n✓ Image loaded successfully!\n`);
-            this.print(`File: ${fileName}\n`);
-            this.print(`MIME type: ${imageData.mimeType}\n`);
-            this.print(
-                `Size: ${((imageData.base64.length * 3) / 4 / 1024 / 1024).toFixed(2)} MB\n`,
-            );
-            this.print(`Base64 length: ${imageData.base64.length.toLocaleString()} characters\n`);
-            this.print(
-                '\nThe image is now stored in memory and will be included in the next prompt.\n',
-            );
-        } catch (error) {
-            this.handleError('Error processing /img command', error);
-            this.print(
-                `\nFailed to load image: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
-            );
         }
     }
 
