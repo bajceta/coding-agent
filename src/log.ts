@@ -73,7 +73,7 @@ class Log {
     }
 
     static setLogLevel(logLevel): void {
-        loggers.forEach((value, key, map) => {
+        loggers.forEach((value, _key, _map) => {
             value.logLevel = logLevel;
             // Update the numeric log level as well
             value.logLevelNumber =
@@ -82,7 +82,7 @@ class Log {
     }
 
     static setPrintMethod(print): void {
-        loggers.forEach((value, key, map) => {
+        loggers.forEach((value, _key, _map) => {
             value.print = print;
         });
     }

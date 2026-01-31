@@ -91,7 +91,7 @@ class LSPManager extends EventEmitter {
                         const message: LSPMessage = JSON.parse(line);
                         log.debug(JSON.stringify(message, null, 4));
                         if (message.id !== undefined && this.pendingRequests.has(message.id)) {
-                            const { resolve, reject } = this.pendingRequests.get(message.id)!;
+                            const { resolve } = this.pendingRequests.get(message.id)!;
                             this.pendingRequests.delete(message.id);
                             resolve(message);
                         } else if (message.method) {
@@ -127,7 +127,7 @@ class LSPManager extends EventEmitter {
 
             log.debug('Wait for lsp init');
             // Wait for server to be ready
-            await new Promise<void>((resolve, reject) => {
+            await new Promise<void>((resolve, _reject) => {
                 const timeout = setTimeout(() => {
                     log.error('LSP timeout');
                     //reject(new Error('LSP initialization timeout'));

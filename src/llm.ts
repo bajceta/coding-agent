@@ -125,7 +125,7 @@ class LLM {
                                     reasoning += reasoningContent;
                                     onReasoningChunk(reasoningContent);
                                 }
-                            } catch (error) {
+                            } catch (_error) {
                                 //log.error('Failed parsing: ' + data + ' error ' + error.message);
                             }
                         }

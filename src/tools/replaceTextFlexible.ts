@@ -54,7 +54,6 @@ async function execute(
                 }
 
                 // Simple fuzzy matching - check if text is contained with some tolerance
-                let matchedLine = line;
                 const searchText = opts.caseSensitive ? oldText : oldText.toLowerCase();
                 const contentLine = opts.caseSensitive ? line : line.toLowerCase();
 

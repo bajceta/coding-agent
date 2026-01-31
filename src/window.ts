@@ -1,5 +1,4 @@
 import StatusBar from './statusBar.ts';
-import MarkdownParser from './markdownParser.ts';
 //import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
 import { TerminalInputHandler } from './terminalInput.ts';
 

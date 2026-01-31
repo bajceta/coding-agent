@@ -129,7 +129,6 @@ class Agent {
     }
 
     processInput(input: string) {
-        let done = false;
         if (!input.trim()) {
             this.print('Input cannot be empty.');
             this.showUserPrompt();
@@ -202,7 +201,6 @@ class Agent {
 
             // Get file extension
             const ext = path.extname(fileName).toLowerCase();
-            const extWithoutDot = ext.substring(1).toLowerCase();
 
             // Check if it's an image file
             const imageExtensions = [

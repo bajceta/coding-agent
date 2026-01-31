@@ -2,7 +2,6 @@
 
 const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
-const path = require('path');
 const TurndownService = require('turndown');
 
 async function fetchWebpageAsMarkdown(url, outputFile = null) {

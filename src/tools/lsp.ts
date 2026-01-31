@@ -6,14 +6,6 @@ import type { ExecuteResult } from '../interfaces.ts';
 import Log from '../log.ts';
 const log = Log.get('lsp');
 
-interface LSPConfig {
-    serverPath?: string;
-    serverArgs?: string[];
-    workspacePath?: string;
-    retryCount?: number;
-    timeout?: number;
-}
-
 // Support multiple workspaces with separate managers
 let lspManagers: Map<string, LSPManager> = new Map();
 
@@ -128,7 +120,7 @@ async function execute(
 
         // Validate operation against server capabilities
         const capabilities = lspManager.getCapabilities();
-        if (!canPerformOperation(operation, capabilities) && false) {
+        if (!canPerformOperation(operation, capabilities)) {
             return {
                 success: false,
                 content: null,
