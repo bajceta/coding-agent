@@ -48,6 +48,7 @@ async function main() {
             if (i + 1 < args.length) {
                 const modelName = args[i + 1];
                 config.modelName = modelName;
+                config.models[0].model = modelName;
                 i++;
             }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
