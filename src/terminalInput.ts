@@ -63,6 +63,7 @@ export class TerminalInputHandler {
                         this.history.push(this.buffer);
                     }
                     this.processInput(this.buffer);
+                    this.buffer = '';
                     this.historyIndex = -1; // Reset history index
                     this.printWholeBuffer(this.buffer);
                 }
@@ -119,6 +120,7 @@ export class TerminalInputHandler {
                     this.buffer = this.history[this.historyIndex];
                     this.clearUserInput();
                     this.printChunk(this.buffer);
+                    this.printWholeBuffer(this.buffer);
                 }
                 return;
             }
@@ -137,6 +139,7 @@ export class TerminalInputHandler {
                     }
                     this.clearUserInput();
                     this.printChunk(this.buffer);
+                    this.printWholeBuffer(this.buffer);
                 }
                 return;
             }

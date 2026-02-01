@@ -173,6 +173,7 @@ class Agent {
                 }
             });
         } else {
+            this.print(input);
             this.process(input);
         }
     }

@@ -1,5 +1,4 @@
 import StatusBar from './statusBar.ts';
-//import { addLog, setStatusBarText, initInkTerminal, setUserInput } from './ink-terminal.tsx';
 import { TerminalInputHandler } from './terminalInput.ts';
 
 class Window {
@@ -11,6 +10,10 @@ class Window {
     agentLines: number;
     inputHandler: TerminalInputHandler;
     ready: boolean;
+    buffer: string[];
+    bufferOffset: number;
+    userInput: string;
+    selector: string[];
 
     constructor(processInput: (text) => void, stopRequest, useInk: boolean = true, agent?: any) {
         this.columnPos = 0;
@@ -20,29 +23,21 @@ class Window {
         this.statusBar = new StatusBar(this.setStatus.bind(this));
         this.useInk = useInk;
         this.ready = false;
+        this.buffer = [''];
+        this.bufferOffset = 0;
+        this.userInput = '';
+        this.selector = [];
+
         const nop = () => {};
-        if (useInk) {
-            // For now, we'll comment out ink-related code since it's causing issues
-            // initInkTerminal();
-            // const printWholeBuffer = setUserInput;
-            // this.inputHandler = new TerminalInputHandler(
-            //     nop,
-            //     printWholeBuffer,
-            //     processInput,
-            //     agent,
-            // );
-        } else {
-            const printChunk = this.printUserInput.bind(this);
-            const clearUserInput = this.clearUserInput.bind(this);
-            this.inputHandler = new TerminalInputHandler(
-                printChunk,
-                nop,
-                processInput,
-                clearUserInput,
-                stopRequest,
-                agent,
-            );
-        }
+        const setUserInput = this.setUserInput.bind(this);
+        this.inputHandler = new TerminalInputHandler(
+            nop,
+            setUserInput,
+            processInput,
+            nop,
+            stopRequest,
+            agent,
+        );
         this.inputHandler.setup();
     }
 
@@ -68,6 +63,14 @@ class Window {
         process.stdout.write('\x1b[u'); // Restore cursor position
     }
 
+    setUserInput(text: string): void {
+        console.log(text);
+        this.userInput = text;
+        console.log(this.userInput);
+        console.log(this);
+        this.render();
+    }
+
     setStatus(text: string): void {
         this.statusText = text;
         if (this.useInk) {
@@ -77,110 +80,53 @@ class Window {
         }
     }
 
-    newline(): void {
-        if (this.useInk) {
-            // For Ink, we don't need to handle newlines manually
-            return;
-        }
-
-        const rows = process.stdout.rows;
-        const statusRow = rows;
-        const textAreaBottom = rows - 1;
-
-        // Clear status bar
-        process.stdout.write(`\x1b[${statusRow};0H\x1b[K`);
-        // Shift screen up
-        process.stdout.write('\x1b[1S');
-        // Move cursor to bottom of text area
-        process.stdout.write(`\x1b[${textAreaBottom};0H`);
-        this.columnPos = 0;
-        this.renderStatusBar();
-    }
-
-    printAddToLine(chunk: string): void {
-        if (this.useInk) {
-            // For Ink, we just add to the log
-            // addLog(chunk);
-            return;
-        }
-
-        const columns = process.stdout.columns;
-        if (this.columnPos + chunk.length > columns) {
-            this.newline();
-        }
-        process.stdout.write(chunk);
-        this.columnPos += chunk.length;
-    }
-
     startAgent(): void {
         this.agentLines = 0;
     }
 
-    clearAgentInput(): void {
-        const rows = process.stdout.rows;
-        const textAreaBottom = rows - 1;
-        for (let i = 0; i < this.agentLines; i++) {
-            process.stdout.write(`\x1b[1T;0H\x1b[K`);
-        }
-        process.stdout.write(`\x1b[${textAreaBottom};0H`);
-        process.stdout.write('\x1b[K');
-        this.agentLines = 0;
-        this.renderStatusBar();
-    }
-
-    clearUserInput(): void {
-        const rows = process.stdout.rows;
-        const textAreaBottom = rows - 1;
-        for (let i = 0; i < this.userLines; i++) {
-            process.stdout.write(`\x1b[1T;0H\x1b[K`);
-        }
-        process.stdout.write(`\x1b[${textAreaBottom};0H`);
-        process.stdout.write('\x1b[K');
-        this.userLines = 0;
-        this.print('\x1b[34mUser: \x1b[0m');
-        this.renderStatusBar();
-    }
-
-    printUserInput(text: string): void {
-        if (text.includes('\n')) {
-            const lines = text.split('\n');
-            this.printAddToLine(lines.shift() || '');
-            for (const line of lines) {
-                this.userLines++;
-                this.newline();
-                this.printAddToLine(line);
-            }
-        } else {
-            this.printAddToLine(text);
-        }
-    }
-
     print(text: string): void {
-        if (this.useInk) {
-            // For Ink, we just add to the log
-            // addLog(text);
-            return;
-        }
-
-        // Parse markdown before printing
-        //const formattedText = MarkdownParser.parse(text);
-        // make json content prettier
-        const formattedText = text; //.replaceAll("\\n", "\n");
-
-        if (formattedText.includes('\n')) {
-            const lines = formattedText.split('\n');
-            this.printAddToLine(lines.shift() || '');
-            for (const line of lines) {
-                this.agentLines++;
-                this.newline();
-                this.printAddToLine(line);
-            }
+        if (!text.includes('\n')) {
+            this.buffer[this.buffer.length - 1] += text;
         } else {
-            this.printAddToLine(formattedText);
+            let first = true;
+            for (var line of text.split('\n')) {
+                if (first) {
+                    this.buffer[this.buffer.length - 1] += line;
+                    first = false;
+                } else {
+                    this.buffer.push(line);
+                    this.bufferOffset++;
+                }
+            }
+        }
+        this.render();
+    }
+
+    render() {
+        process.stdout.write('\x1b[2J\x1b[H'); // Clear screen
+        this.renderBuffer();
+        this.renderStatusBar();
+    }
+
+    renderBuffer() {
+        const buffer = this.buffer.concat(this.userInput.split('\n'), this.selector);
+
+        const rows = process.stdout.rows;
+        const columns = process.stdout.columns;
+        var bufferLine = buffer.length;
+        for (let i = rows - 2; i > 0; i--) {
+            bufferLine--;
+            if (buffer[bufferLine].length > columns) {
+                i--;
+            }
+            process.stdout.write('\x1b[s'); // Save cursor position
+            process.stdout.write(`\x1b[${i};1H\x1b[K`);
+            process.stdout.write(`${buffer[bufferLine]}\n`);
+            process.stdout.write('\x1b[u'); // Restore cursor position
+            if (bufferLine === 0) break;
         }
     }
 
-    // Expose StatusBar for external updates
     getStatusBar(): StatusBar {
         return this.statusBar;
     }
