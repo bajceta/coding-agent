@@ -93,6 +93,7 @@ export class TerminalInputHandler {
             if (code === 0x03) {
                 // Ctrl+C
                 // console.log('\nExiting...');
+                this.agent.window.exit();
                 process.exit(0);
             }
 

@@ -67,6 +67,7 @@ class Window {
         this.userInput = text;
         this.render();
     }
+
     setSelector(list) {
         this.selector = list;
         this.render();
@@ -130,6 +131,12 @@ class Window {
 
     getStatusBar(): StatusBar {
         return this.statusBar;
+    }
+
+    exit() {
+        for (let line of this.buffer) {
+            console.log(line);
+        }
     }
 }
 
