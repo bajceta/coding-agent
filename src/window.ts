@@ -64,10 +64,11 @@ class Window {
     }
 
     setUserInput(text: string): void {
-        console.log(text);
         this.userInput = text;
-        console.log(this.userInput);
-        console.log(this);
+        this.render();
+    }
+    setSelector(list) {
+        this.selector = list;
         this.render();
     }
 

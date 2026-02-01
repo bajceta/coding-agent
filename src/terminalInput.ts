@@ -1,4 +1,5 @@
 import type Agent from './agent.ts';
+import { readdirSync } from 'fs';
 
 export class TerminalInputHandler {
     private agent: Agent;
@@ -13,6 +14,7 @@ export class TerminalInputHandler {
     private clearUserInput: () => void;
     private stopRequest: () => void;
     private prompt: ((value: string) => void) | null = null;
+    private fileSelect: boolean;
 
     constructor(
         printChunk: (chunk: string) => void,
@@ -30,6 +32,12 @@ export class TerminalInputHandler {
         this.stopRequest = stopRequest;
         this.agent = agent;
         this.userInput = [];
+        this.fileSelect = false;
+    }
+
+    fileSelectMode(state) {
+        this.fileSelect = state;
+        this.agent.window.setSelector([]);
     }
 
     waitPrompt(): Promise<string> {
@@ -47,13 +55,15 @@ export class TerminalInputHandler {
         this.stdin.resume();
         this.stdin.setEncoding('utf8');
 
+        let fileList = [];
+
         let escCount: number = 0;
         this.stdin.on('data', (chunk: string) => {
             const code = chunk.charCodeAt(0);
 
             // ESC key is ASCII 27
-
             if (code === 13) {
+                this.fileSelectMode(false);
                 // ENTER key (CR)
                 if (this.prompt) {
                     this.prompt(this.buffer);
@@ -70,6 +80,7 @@ export class TerminalInputHandler {
                 this.buffer = '';
                 return;
             }
+
             if (code === 0x7f || code === 0x08) {
                 // Backspace (DEL or BS)
                 if (this.buffer.length > 0) {
@@ -81,7 +92,7 @@ export class TerminalInputHandler {
             }
             if (code === 0x03) {
                 // Ctrl+C
-                console.log('\nExiting...');
+                // console.log('\nExiting...');
                 process.exit(0);
             }
 
@@ -165,8 +176,47 @@ export class TerminalInputHandler {
                 escCount = 0; // Reset if any other key is pressed
             }
 
-            // Normal characters
+            // whitespace
+            if (code === 27) {
+                if (this.fileSelect) {
+                }
+            }
+
+            // Handle @ symbol
+            if (chunk === '@') {
+                this.fileSelectMode(true);
+            }
+
+            //tab
+            if (code === 9) {
+                if (this.fileSelect) {
+                    const parts = this.buffer.split('@');
+                    parts.pop();
+                    parts.push(fileList[0]);
+                    this.buffer = parts.join('@');
+                }
+            }
+
             this.buffer += chunk;
+
+            if (this.fileSelect) {
+                const filename = this.buffer.split('@').pop();
+                try {
+                    const files = readdirSync('.');
+                    if (filename != '') {
+                        fileList = files.filter((file) => file.includes(filename));
+                    } else {
+                        fileList = files.slice(0, 10);
+                    }
+                    if (this.agent && this.agent.window) {
+                        this.agent.window.setSelector(fileList);
+                    }
+                } catch (error) {
+                    console.error('Error reading directory:', error);
+                }
+            }
+
+            // Normal characters
             this.printChunk(chunk);
             this.printWholeBuffer(this.buffer);
         });
