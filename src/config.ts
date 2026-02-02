@@ -16,7 +16,6 @@ export interface Config {
     parserType: string;
     safeTools: string[];
     logFile: string;
-    useInk: boolean;
     rulesFile: string;
     modelName: string;
 }
@@ -36,7 +35,6 @@ const defaultConfig: Config = {
     yoloMode: false,
     safeTools: ['readFile'],
     logFile: '',
-    useInk: false,
     rulesFile: '',
     modelName: 'default',
 };

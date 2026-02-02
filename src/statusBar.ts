@@ -112,7 +112,11 @@ class StatusBar {
 
         // YOLO mode status - magenta for mode status
         if (yoloMode !== undefined) {
-            text += `${MAGENTA}YOLO: ${yoloMode ? 'ON' : 'OFF'}${RESET}`;
+            if (yoloMode) {
+                text += `${RED}YOLO${RESET}`;
+            } else {
+                text += `${GREEN}SAFE${RESET}`;
+            }
         }
 
         // Tokens count - green for positive values

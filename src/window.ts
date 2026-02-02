@@ -6,7 +6,6 @@ class Window {
     columnPos: number;
     statusText: string;
     statusBar: StatusBar;
-    useInk: boolean;
     userLines: number;
     agentLines: number;
     inputHandler: TerminalInputHandler;
@@ -16,13 +15,12 @@ class Window {
     userInput: string;
     selector: string[];
 
-    constructor(processInput: (text) => void, stopRequest, useInk: boolean = true, agent?: any) {
+    constructor() {
         this.columnPos = 0;
         this.userLines = 0;
         this.agentLines = 0;
         this.statusText = '';
         this.statusBar = new StatusBar(this.setStatus.bind(this));
-        this.useInk = useInk;
         this.ready = false;
         this.buffer = [''];
         this.bufferOffset = 0;
@@ -31,14 +29,7 @@ class Window {
 
         const nop = () => {};
         const setUserInput = this.setUserInput.bind(this);
-        this.inputHandler = new TerminalInputHandler(
-            nop,
-            setUserInput,
-            processInput,
-            nop,
-            stopRequest,
-            agent,
-        );
+        this.inputHandler = new TerminalInputHandler(nop, setUserInput, nop);
         this.inputHandler.setup();
 
         // Set up event handlers
@@ -55,18 +46,15 @@ class Window {
     // Render status bar (called internally)
     renderStatusBar(): void {
         if (!this.ready) return;
-        if (this.useInk) {
-            // For Ink, we'll update the status bar through our Ink interface
-            return;
-        }
 
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
+        const pureText = this.statusText.replace(/\x1b\[[0-9;]*m/g, '');
+        const escapeCodeLength = this.statusText.length - pureText.length;
 
-        // Move to status row, clear line, write text
         process.stdout.write('\x1b[s'); // Save cursor position
         process.stdout.write(`\x1b[${rows};1H\x1b[K`);
-        process.stdout.write(this.statusText.substring(0, columns));
+        process.stdout.write(this.statusText.substring(0, columns + escapeCodeLength - 5));
         process.stdout.write('\x1b[u'); // Restore cursor position
     }
 
@@ -82,11 +70,7 @@ class Window {
 
     setStatus(text: string): void {
         this.statusText = text;
-        if (this.useInk) {
-            // setStatusBarText(text);
-        } else {
-            this.renderStatusBar();
-        }
+        this.renderStatusBar();
     }
 
     startAgent(): void {
@@ -150,6 +134,9 @@ class Window {
             for (let line of this.buffer) {
                 console.log(line);
             }
+        });
+        eventBus.on('autocomplete_list', (list) => {
+            this.setSelector(list);
         });
     }
 

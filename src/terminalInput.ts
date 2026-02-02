@@ -1,9 +1,7 @@
-import type Agent from './agent.ts';
 import { readdirSync } from 'fs';
 import eventBus from './eventBus.ts';
 
 export class TerminalInputHandler {
-    private agent: Agent;
     private buffer: string = '';
     private stdin: NodeJS.ReadStream;
     private userInput: string[];
@@ -11,34 +9,26 @@ export class TerminalInputHandler {
     private history: string[] = []; // Store command history
     private printChunk: (chunk: string) => void;
     private printWholeBuffer: (buffer: string) => void;
-    private processInput: (input: string) => void;
     private clearUserInput: () => void;
-    private stopRequest: () => void;
     private prompt: ((value: string) => void) | null = null;
     private fileSelect: boolean;
 
     constructor(
         printChunk: (chunk: string) => void,
         printWholeBuffer: (buffer: string) => void,
-        processInput: (input: string) => void,
         clearUserInput: () => void,
-        stopRequest: () => void,
-        agent?: Agent,
     ) {
         this.stdin = process.stdin;
         this.printChunk = printChunk;
         this.printWholeBuffer = printWholeBuffer;
-        this.processInput = processInput;
         this.clearUserInput = clearUserInput;
-        this.stopRequest = stopRequest;
-        this.agent = agent;
         this.userInput = [];
         this.fileSelect = false;
     }
 
     fileSelectMode(state) {
         this.fileSelect = state;
-        this.agent.window.setSelector([]);
+        eventBus.emit('autocomplete_list', []);
     }
 
     waitPrompt(): Promise<string> {
@@ -73,7 +63,7 @@ export class TerminalInputHandler {
                     if (this.buffer.length > 0) {
                         this.history.push(this.buffer);
                     }
-                    this.processInput(this.buffer);
+                    eventBus.emit('process_input', this.buffer);
                     this.buffer = '';
                     this.historyIndex = -1; // Reset history index
                     this.printWholeBuffer(this.buffer);
@@ -167,7 +157,7 @@ export class TerminalInputHandler {
                 escCount++;
                 if (escCount >= 2) {
                     this.printChunk('\n🛑 Stopping request...');
-                    this.stopRequest();
+                    eventBus.emit('stop_request');
                     escCount = 0;
                 } else {
                     this.printChunk('\n⚠️ Press ESC again to stop current request');
@@ -208,9 +198,7 @@ export class TerminalInputHandler {
                     } else {
                         fileList = files.slice(0, 10);
                     }
-                    if (this.agent && this.agent.window) {
-                        this.agent.window.setSelector(fileList);
-                    }
+                    eventBus.emit('autocomplete_list', fileList);
                 } catch (error) {
                     console.error('Error reading directory:', error);
                 }
@@ -222,9 +210,6 @@ export class TerminalInputHandler {
         });
 
         this.stdin.on('end', () => {
-            if (this.agent) {
-                this.agent.print('\nInput ended');
-            }
             console.log('\nInput ended');
         });
     }

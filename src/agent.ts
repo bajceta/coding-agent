@@ -25,12 +25,7 @@ class Agent {
 
     constructor(config: Config) {
         this.config = config;
-        this.window = new Window(
-            this.processInput.bind(this),
-            this.stopRequest.bind(this),
-            false,
-            this,
-        );
+        this.window = new Window();
         Log.setPrintMethod(this.window.print.bind(this.window));
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.tools = {};
@@ -43,6 +38,12 @@ class Agent {
     private setupEventHandlers(): void {
         eventBus.on('yoloMode', () => {
             this.toggleYoloMode();
+        });
+        eventBus.on('process_input', (text) => {
+            this.processInput(text);
+        });
+        eventBus.on('stop_request', () => {
+            this.stopRequest();
         });
     }
 
@@ -70,6 +71,9 @@ class Agent {
             content: systemPrompt(this.tools, this.parser.toolPrompt, this.config.rulesFile),
         });
         this.window.setReady();
+        this.window.statusBar.updateState({
+            model: this.llm.modelConfig.model,
+        });
     }
 
     async loadTools() {
