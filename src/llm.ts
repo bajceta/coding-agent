@@ -114,7 +114,7 @@ class LLM {
                                     parsed.choices[0]?.delta?.reasoning_content || '';
 
                                 if (content) {
-                                    if (!newlineInserted) {
+                                    if (!newlineInserted && reasoningContent.length > 0) {
                                         onChunk('\n');
                                         newlineInserted = true;
                                     }

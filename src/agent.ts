@@ -487,7 +487,7 @@ class Agent {
             let response;
 
             try {
-                this.print('\n\x1b[32mAgent:\n\x1b[0m');
+                this.print('\n\x1b[32mAgent: \x1b[0m');
                 this.window.startAgent();
 
                 // Add loaded image data to the last user message if available
@@ -502,7 +502,7 @@ class Agent {
                 //this.window.clearAgentInput();
                 //this.print(response.msg.content);
 
-                this.print('\n');
+                //this.print('\n');
                 if (response && response.stats) {
                     const stats = response.stats;
                     this.window.statusBar.updateState({
