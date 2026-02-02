@@ -43,6 +43,9 @@ class Window {
 
         // Set up event handlers
         this.setupEventHandlers();
+
+        // Set up terminal resize handler
+        this.setupResizeHandler();
     }
 
     setReady(): void {
@@ -148,6 +151,16 @@ class Window {
                 console.log(line);
             }
         });
+    }
+
+    private setupResizeHandler(): void {
+        const handleResize = () => {
+            if (this.ready) {
+                this.render();
+            }
+        };
+
+        process.stdout.on('resize', handleResize);
     }
 }
 
