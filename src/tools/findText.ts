@@ -2,7 +2,7 @@ import runCommand from './runCommand.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 
 async function execute(text: string): Promise<ExecuteResult> {
-    return await runCommand.execute(`ag '${text}'`);
+    return await runCommand.execute(`rg '${text}' .`);
 }
 
 // Export module
