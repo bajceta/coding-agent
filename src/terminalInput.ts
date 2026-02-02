@@ -1,5 +1,6 @@
 import type Agent from './agent.ts';
 import { readdirSync } from 'fs';
+import eventBus from './eventBus.ts';
 
 export class TerminalInputHandler {
     private agent: Agent;
@@ -93,7 +94,7 @@ export class TerminalInputHandler {
             if (code === 0x03) {
                 // Ctrl+C
                 // console.log('\nExiting...');
-                this.agent.window.exit();
+                eventBus.emit('exit');
                 process.exit(0);
             }
 
@@ -158,9 +159,7 @@ export class TerminalInputHandler {
 
             // Handle Ctrl+Y key (ASCII 25)
             if (code === 25) {
-                if (this.agent) {
-                    this.agent.toggleYoloMode();
-                }
+                eventBus.emit('yoloMode');
                 return;
             }
 
@@ -168,13 +167,13 @@ export class TerminalInputHandler {
                 escCount++;
                 if (escCount >= 2) {
                     this.printChunk('\n🛑 Stopping request...');
-                    this.stopRequest(); // Call the agent's stop method
-                    escCount = 0; // Reset counter
+                    this.stopRequest();
+                    escCount = 0;
                 } else {
                     this.printChunk('\n⚠️ Press ESC again to stop current request');
                 }
             } else {
-                escCount = 0; // Reset if any other key is pressed
+                escCount = 0;
             }
 
             // whitespace

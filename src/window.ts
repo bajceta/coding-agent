@@ -1,5 +1,6 @@
 import StatusBar from './statusBar.ts';
 import { TerminalInputHandler } from './terminalInput.ts';
+import eventBus from './eventBus.ts';
 
 class Window {
     columnPos: number;
@@ -39,6 +40,9 @@ class Window {
             agent,
         );
         this.inputHandler.setup();
+
+        // Set up event handlers
+        this.setupEventHandlers();
     }
 
     setReady(): void {
@@ -111,7 +115,8 @@ class Window {
     }
 
     renderBuffer() {
-        const buffer = this.buffer.concat(this.userInput.split('\n'), this.selector);
+        const userLines = this.userInput.split('\n');
+        const buffer = this.buffer.concat(userLines, this.selector);
 
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
@@ -121,22 +126,28 @@ class Window {
             if (buffer[bufferLine].length > columns) {
                 i--;
             }
-            process.stdout.write('\x1b[s'); // Save cursor position
+            //process.stdout.write('\x1b[s'); // Save cursor position
             process.stdout.write(`\x1b[${i};1H\x1b[K`);
             process.stdout.write(`${buffer[bufferLine]}\n`);
-            process.stdout.write('\x1b[u'); // Restore cursor position
+            //process.stdout.write('\x1b[u'); // Restore cursor position
             if (bufferLine === 0) break;
         }
+        const cursorRow = rows - 2 - this.selector.length;
+        const cursorColumn = userLines[userLines.length - 1].length + 1;
+        process.stdout.write(`\x1b[${cursorRow};${cursorColumn}H\x1b[K`);
     }
 
     getStatusBar(): StatusBar {
         return this.statusBar;
     }
 
-    exit() {
-        for (let line of this.buffer) {
-            console.log(line);
-        }
+    private setupEventHandlers(): void {
+        eventBus.on('exit', () => {
+            console.log('Exit event received in window.ts');
+            for (let line of this.buffer) {
+                console.log(line);
+            }
+        });
     }
 }
 

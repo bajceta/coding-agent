@@ -9,6 +9,7 @@ import Window from './window.ts';
 import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
+import eventBus from './eventBus.ts';
 
 const log = Log.get('agent');
 
@@ -36,6 +37,13 @@ class Agent {
         this.singleShot = false;
         this.messages = [];
         this.parser = this.initializeParser(this.config.parserType);
+        this.setupEventHandlers();
+    }
+
+    private setupEventHandlers(): void {
+        eventBus.on('yoloMode', () => {
+            this.toggleYoloMode();
+        });
     }
 
     /**
