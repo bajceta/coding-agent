@@ -42,6 +42,9 @@ class Agent {
         eventBus.on('process_input', (text) => {
             this.processInput(text);
         });
+        eventBus.on('exit', () => {
+            this.stopRequest();
+        });
         eventBus.on('stop_request', () => {
             this.stopRequest();
         });
