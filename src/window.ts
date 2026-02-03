@@ -29,6 +29,7 @@ class Window {
 
         const nop = () => {};
         const setUserInput = this.setUserInput.bind(this);
+
         this.inputHandler = new TerminalInputHandler(nop, setUserInput, nop);
         this.inputHandler.setup();
 
@@ -88,7 +89,6 @@ class Window {
                     first = false;
                 } else {
                     this.buffer.push(line);
-                    this.bufferOffset++;
                 }
             }
         }
@@ -107,12 +107,15 @@ class Window {
 
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
-        var bufferLine = buffer.length;
+        var bufferLine = Math.max(buffer.length - this.bufferOffset, 0);
         for (let i = rows - 2; i > 0; i--) {
             bufferLine--;
-            if (buffer[bufferLine].length > columns) {
-                i--;
-            }
+            if (bufferLine < 0) break;
+
+            i = i - Math.trunc(buffer[bufferLine].length / columns);
+            //            if (buffer[bufferLine].length > columns) {
+            //     i--;
+            //}
             //process.stdout.write('\x1b[s'); // Save cursor position
             process.stdout.write(`\x1b[${i};1H\x1b[K`);
             process.stdout.write(`${buffer[bufferLine]}\n`);
@@ -138,6 +141,28 @@ class Window {
         eventBus.on('autocomplete_list', (list) => {
             this.setSelector(list);
         });
+        eventBus.on('scroll', (direction: 'up' | 'down') => {
+            this.handleScroll(direction);
+        });
+        eventBus.on('print_buffer', () => {
+            console.log(this.buffer);
+        });
+    }
+
+    private handleScroll(direction: 'up' | 'down') {
+        const rows = process.stdout.rows;
+
+        if (direction === 'down') {
+            if (this.bufferOffset > 0) {
+                this.bufferOffset--;
+            }
+        } else {
+            if (this.buffer.length > this.bufferOffset) {
+                this.bufferOffset++;
+            }
+        }
+
+        this.render();
     }
 
     private setupResizeHandler(): void {

@@ -1,4 +1,5 @@
 import { getConfig } from './config.ts'; // Import config singleton
+import eventBus from './eventBus.ts';
 
 interface StatusBarState {
     promptTokens: number;
@@ -11,7 +12,8 @@ interface StatusBarState {
     currentlyRunningTool: string | null;
     model: string | null;
     status: string;
-    yoloMode: boolean; // Add YOLO mode status
+    yoloMode: boolean;
+    mode: string;
 }
 
 interface UpdateCallback {
@@ -48,6 +50,7 @@ class StatusBar {
             currentlyRunningTool: null,
             model: null,
             status: 'Ready',
+            mode: 'normal',
             yoloMode: false, // Initialize YOLO mode as false
         };
         const config = getConfig();
@@ -56,6 +59,10 @@ class StatusBar {
         this.tokenCount = 0;
         this.onUpdate = onUpdate;
         this.onUpdate(this.getText());
+        eventBus.on('mode', (mode) => {
+            this.state.mode = mode;
+            this.onUpdate(this.getText());
+        });
     }
 
     // Set currently running tool
@@ -106,10 +113,12 @@ class StatusBar {
             model,
             status,
             yoloMode,
+            mode,
         } = this.state;
 
         let text = '';
 
+        text += `${BLUE}${mode}${RESET} `;
         // YOLO mode status - magenta for mode status
         if (yoloMode !== undefined) {
             if (yoloMode) {

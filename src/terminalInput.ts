@@ -12,6 +12,7 @@ export class TerminalInputHandler {
     private clearUserInput: () => void;
     private prompt: ((value: string) => void) | null = null;
     private fileSelect: boolean;
+    private mode: 'normal' | 'insert' = 'normal';
 
     constructor(
         printChunk: (chunk: string) => void,
@@ -29,6 +30,11 @@ export class TerminalInputHandler {
     fileSelectMode(state) {
         this.fileSelect = state;
         eventBus.emit('autocomplete_list', []);
+    }
+
+    setMode(mode: 'normal' | 'insert') {
+        this.mode = mode;
+        eventBus.emit('mode', mode);
     }
 
     waitPrompt(): Promise<string> {
@@ -52,161 +58,214 @@ export class TerminalInputHandler {
         this.stdin.on('data', (chunk: string) => {
             const code = chunk.charCodeAt(0);
 
-            // ESC key is ASCII 27
-            if (code === 13) {
-                this.fileSelectMode(false);
-                // ENTER key (CR)
-                if (this.prompt) {
-                    this.prompt(this.buffer);
-                    this.prompt = null;
-                } else {
-                    if (this.buffer.length > 0) {
-                        this.history.push(this.buffer);
-                    }
-                    eventBus.emit('process_input', this.buffer);
-                    this.buffer = '';
-                    this.historyIndex = -1; // Reset history index
-                    this.printWholeBuffer(this.buffer);
-                }
-                this.buffer = '';
-                return;
-            }
-
-            if (code === 0x7f || code === 0x08) {
-                // Backspace (DEL or BS)
-                if (this.buffer.length > 0) {
-                    this.buffer = this.buffer.slice(0, -1); // Remove last character
-                    this.printChunk('\x08 \x08'); // Move cursor back, clear, move back
-                    this.printWholeBuffer(this.buffer);
-                }
-                return;
-            }
             if (code === 0x03) {
                 // Ctrl+C
-                // console.log('\nExiting...');
                 eventBus.emit('exit');
                 process.exit(0);
             }
 
-            if (code === 10 && chunk === '\n') {
-                // Raw mode still emits LF sometimes, but Enter is CR above (13)
-                // So treat plain LF only as typed text
-                this.buffer += '\n';
-                this.printChunk('\n');
-                this.printWholeBuffer(this.buffer);
-                return;
-            }
-
-            if (code === 10 && this.stdin.isRaw) {
-                // Ctrl+J generates LF (10)
-                this.buffer += '\n';
-                this.printChunk('\n');
-                this.printWholeBuffer(this.buffer);
-                return;
-            }
-
-            // Handle up arrow key (ESC[A or \x1b[A)
-            if (chunk === '\x1b[A' || chunk === '\x1b[1;5A') {
-                if (this.history.length > 0) {
-                    if (this.historyIndex === -1) {
-                        // First time accessing history, save current buffer
-                        this.historyIndex = this.history.length - 1;
-                    } else if (this.historyIndex > 0) {
-                        // Move up in history
-                        this.historyIndex--;
-                    } else {
-                        // Already at oldest item
-                        return;
-                    }
-
-                    // Replace buffer with history item
-                    this.buffer = this.history[this.historyIndex];
-                    this.clearUserInput();
-                    this.printChunk(this.buffer);
-                    this.printWholeBuffer(this.buffer);
+            // Mode handling
+            if (this.mode === 'normal') {
+                // 'i' to enter insert mode
+                if (code === 105) {
+                    // ASCII for 'i'
+                    this.setMode('insert');
+                    return;
                 }
-                return;
-            }
 
-            // Handle down arrow key (ESC[B or \x1b[B)
-            if (chunk === '\x1b[B' || chunk === '\x1b[1;5B') {
-                if (this.history.length > 0 && this.historyIndex !== -1) {
-                    if (this.historyIndex < this.history.length - 1) {
-                        // Move down in history
-                        this.historyIndex++;
-                        this.buffer = this.history[this.historyIndex];
-                    } else {
-                        // At newest item, clear buffer
-                        this.historyIndex = -1;
-                        this.buffer = '';
-                    }
-                    this.clearUserInput();
-                    this.printChunk(this.buffer);
-                    this.printWholeBuffer(this.buffer);
+                // 'j' to scroll down
+                if (code === 106) {
+                    // ASCII for 'j'
+                    eventBus.emit('scroll', 'down');
+                    return;
                 }
-                return;
-            }
 
-            // Handle Ctrl+Y key (ASCII 25)
-            if (code === 25) {
-                eventBus.emit('yoloMode');
-                return;
-            }
+                // 'k' to scroll up
+                if (code === 107) {
+                    // ASCII for 'k'
+                    eventBus.emit('scroll', 'up');
+                    return;
+                }
 
-            if (code === 27) {
-                escCount++;
-                if (escCount >= 2) {
-                    this.printChunk('\n🛑 Stopping request...');
+                // CTRL+j (103 + 32 = 135? Actually CTRL+j is 135 in raw mode, or we can check chunk)
+                if (code === 135 && chunk === '\x0a') {
+                    eventBus.emit('scroll', 'down');
+                    return;
+                }
+
+                // CTRL+k (107 + 32 = 139? Actually CTRL+k is 139, or we can check chunk)
+                if (code === 139 && chunk === '\x0b') {
+                    eventBus.emit('scroll', 'up');
+                    return;
+                }
+
+                if (chunk === 'q') {
                     eventBus.emit('stop_request');
-                    escCount = 0;
-                } else {
-                    this.printChunk('\n⚠️ Press ESC again to stop current request');
+                    return;
                 }
-            } else {
-                escCount = 0;
-            }
 
-            // whitespace
-            if (code === 27) {
-                if (this.fileSelect) {
+                if (chunk === 'y') {
+                    eventBus.emit('yoloMode');
+                    return;
                 }
-            }
 
-            // Handle @ symbol
-            if (chunk === '@') {
-                this.fileSelectMode(true);
-            }
-
-            //tab
-            if (code === 9) {
-                if (this.fileSelect) {
-                    const parts = this.buffer.split('@');
-                    parts.pop();
-                    parts.push(fileList[0]);
-                    this.buffer = parts.join('@');
+                if (chunk === 'b') {
+                    eventBus.emit('print_buffer');
+                    return;
                 }
+                return;
             }
 
-            this.buffer += chunk;
-
-            if (this.fileSelect) {
-                const filename = this.buffer.split('@').pop();
-                try {
-                    const files = readdirSync('.');
-                    if (filename != '') {
-                        fileList = files.filter((file) => file.includes(filename));
+            if (this.mode === 'insert') {
+                if (code === 13) {
+                    this.fileSelectMode(false);
+                    // ENTER key (CR)
+                    if (this.prompt) {
+                        this.prompt(this.buffer);
+                        this.prompt = null;
                     } else {
-                        fileList = files.slice(0, 10);
+                        if (this.buffer.length > 0) {
+                            this.history.push(this.buffer);
+                        }
+                        eventBus.emit('process_input', this.buffer);
+                        this.buffer = '';
+                        this.historyIndex = -1; // Reset history index
+                        this.printWholeBuffer(this.buffer);
                     }
-                    eventBus.emit('autocomplete_list', fileList);
-                } catch (error) {
-                    console.error('Error reading directory:', error);
+                    this.buffer = '';
+                    return;
                 }
-            }
 
-            // Normal characters
-            this.printChunk(chunk);
-            this.printWholeBuffer(this.buffer);
+                if (code === 0x7f || code === 0x08) {
+                    // Backspace (DEL or BS)
+                    if (this.buffer.length > 0) {
+                        this.buffer = this.buffer.slice(0, -1); // Remove last character
+                        this.printChunk('\x08 \x08'); // Move cursor back, clear, move back
+                        this.printWholeBuffer(this.buffer);
+                    }
+                    return;
+                }
+
+                if (code === 10 && chunk === '\n') {
+                    // Raw mode still emits LF sometimes, but Enter is CR above (13)
+                    // So treat plain LF only as typed text
+                    this.buffer += '\n';
+                    this.printChunk('\n');
+                    this.printWholeBuffer(this.buffer);
+                    return;
+                }
+
+                if (code === 10 && this.stdin.isRaw) {
+                    // Ctrl+J generates LF (10)
+                    this.buffer += '\n';
+                    this.printChunk('\n');
+                    this.printWholeBuffer(this.buffer);
+                    return;
+                }
+
+                // Handle up arrow key (ESC[A or \x1b[A)
+                if (chunk === '\x1b[A' || chunk === '\x1b[1;5A') {
+                    if (this.history.length > 0) {
+                        if (this.historyIndex === -1) {
+                            // First time accessing history, save current buffer
+                            this.historyIndex = this.history.length - 1;
+                        } else if (this.historyIndex > 0) {
+                            // Move up in history
+                            this.historyIndex--;
+                        } else {
+                            // Already at oldest item
+                            return;
+                        }
+
+                        // Replace buffer with history item
+                        this.buffer = this.history[this.historyIndex];
+                        this.clearUserInput();
+                        this.printChunk(this.buffer);
+                        this.printWholeBuffer(this.buffer);
+                    }
+                    return;
+                }
+
+                // Handle down arrow key (ESC[B or \x1b[B)
+                if (chunk === '\x1b[B' || chunk === '\x1b[1;5B') {
+                    if (this.history.length > 0 && this.historyIndex !== -1) {
+                        if (this.historyIndex < this.history.length - 1) {
+                            // Move down in history
+                            this.historyIndex++;
+                            this.buffer = this.history[this.historyIndex];
+                        } else {
+                            // At newest item, clear buffer
+                            this.historyIndex = -1;
+                            this.buffer = '';
+                        }
+                        this.clearUserInput();
+                        this.printChunk(this.buffer);
+                        this.printWholeBuffer(this.buffer);
+                    }
+                    return;
+                }
+
+                // Handle Ctrl+Y key (ASCII 25)
+                if (code === 25) {
+                    eventBus.emit('yoloMode');
+                    return;
+                }
+
+                // Handle @ symbol
+                if (chunk === '@') {
+                    this.fileSelectMode(true);
+                }
+
+                // tab
+                if (code === 9) {
+                    if (this.fileSelect) {
+                        const parts = this.buffer.split('@');
+                        parts.pop();
+                        parts.push(fileList[0]);
+                        this.buffer = parts.join('@');
+                    }
+                }
+
+                // ESC to exit insert mode when in insert mode
+                if (code === 27 && this.mode === 'insert') {
+                    this.setMode('normal');
+                    return;
+                }
+
+                if (this.fileSelect) {
+                    const filename = this.buffer.split('@').pop();
+                    try {
+                        const files = readdirSync('.');
+                        if (filename != '') {
+                            fileList = files.filter((file) => file.includes(filename));
+                        } else {
+                            fileList = files.slice(0, 10);
+                        }
+                        eventBus.emit('autocomplete_list', fileList);
+                    } catch (error) {
+                        console.error('Error reading directory:', error);
+                    }
+                }
+
+                this.buffer += chunk;
+
+                if (this.fileSelect) {
+                    const filename = this.buffer.split('@').pop();
+                    try {
+                        const files = readdirSync('.');
+                        if (filename != '') {
+                            fileList = files.filter((file) => file.includes(filename));
+                        } else {
+                            fileList = files.slice(0, 10);
+                        }
+                        eventBus.emit('autocomplete_list', fileList);
+                    } catch (error) {
+                        console.error('Error reading directory:', error);
+                    }
+                }
+                this.printChunk(chunk);
+                this.printWholeBuffer(this.buffer);
+            }
         });
 
         this.stdin.on('end', () => {

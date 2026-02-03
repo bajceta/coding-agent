@@ -503,7 +503,7 @@ class Agent {
                     currentMessages,
                     this.tools,
                     this.print.bind(this),
-                    (chunk: string) => this.print('\x1b[31m' + chunk + '\x1b[0m'),
+                    (chunk: string) => this.print(chunk),
                 );
 
                 //this.window.clearAgentInput();
