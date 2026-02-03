@@ -113,6 +113,20 @@ export class TerminalInputHandler {
                     eventBus.emit('print_buffer');
                     return;
                 }
+
+                // 'm' to list models
+                if (chunk === 'm') {
+                    eventBus.emit('list_models');
+                    return;
+                }
+
+                // Keys 1-9 to select models by number
+                if (code >= 49 && code <= 57) {
+                    // ASCII codes for keys 1-9 (49='1', 57='9')
+                    const modelNumber = code - 48; // Convert ASCII to number (48='0')
+                    eventBus.emit('select_model', modelNumber);
+                    return;
+                }
                 return;
             }
 
