@@ -19,6 +19,7 @@ async function main() {
 
     let question: string | undefined = undefined;
     let helpFlag: boolean = false;
+    let modelNumber: number | null = null;
     const args: string[] = process.argv.slice(2);
 
     const config = getConfig();
@@ -46,9 +47,17 @@ async function main() {
             intro = false;
         } else if (args[i] === '--model' || args[i] === '-m') {
             if (i + 1 < args.length) {
-                const modelName = args[i + 1];
-                config.modelName = modelName;
-                config.models[0].model = modelName;
+                const modelArg = args[i + 1];
+                const modelNumberValue = parseInt(modelArg, 10);
+
+                if (!isNaN(modelNumberValue) && modelNumberValue >= 1) {
+                    // It's a number, we'll handle it later
+                    modelNumber = modelNumberValue;
+                } else {
+                    // It's a name, use it as before
+                    config.modelName = modelArg;
+                    config.models[0].model = modelArg;
+                }
                 i++;
             }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
@@ -121,9 +130,14 @@ async function main() {
         console.log(`📝 Log file set to: ${config.logFile}`);
     }
 
+    // Create the agent early so we can use handleSelectModelByNumber
     const agent: Agent = new (await import('./src/agent.ts')).default(config);
 
     await agent.init();
+    // Handle model selection by number if specified
+    if (modelNumber !== null) {
+        await agent.handleSelectModelByNumber(modelNumber);
+    }
 
     // Handle command line arguments
     if (question) {

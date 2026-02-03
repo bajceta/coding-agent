@@ -5,6 +5,7 @@ import Stats from './stats.ts';
 import fs from 'fs';
 import path from 'path';
 import Log from './log.ts';
+import eventBus from './eventBus.ts';
 const log = Log.get('llm');
 
 class LLM {
@@ -214,6 +215,7 @@ class LLM {
      */
     updateModelConfig(modelConfig: any): void {
         this.config.models[0].model = modelConfig.id;
+        eventBus.emit('update_status_bar', { model: this.config.models[0].model });
     }
 }
 

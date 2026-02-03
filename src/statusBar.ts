@@ -63,6 +63,7 @@ class StatusBar {
             this.state.mode = mode;
             this.onUpdate(this.getText());
         });
+        eventBus.on('update_status_bar', (args) => this.updateState(args));
     }
 
     // Set currently running tool
