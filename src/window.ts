@@ -124,6 +124,8 @@ class Window {
         for (let msg of this.agentMessages) {
             if (msg.role == 'assistant') {
                 msgs += `${BLUE}${msg.role}: ${RESET}`;
+                if (msg.reasoning_content.length > 0)
+                    msgs += MAGENTA + msg.reasoning_content + RESET + '\n';
                 if (msg.content.length > 0) msgs += msg.content + '\n';
                 if (msg.tool_calls) {
                     for (let call of msg.tool_calls) {

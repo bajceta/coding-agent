@@ -26,19 +26,7 @@ class LLM {
         this.stream = true;
     }
 
-    makeRequest(
-        messages: Message[],
-        tools: Tools,
-        onChunk: (chunk: string) => void,
-        onReasoningChunk: (chunk: string) => void,
-    ): LLMResponse {
-        //if (this.config.logFile.length > 0) {
-        //    const resolvedPath = path.resolve(this.config.logFile);
-        //    messages.forEach((msg) =>
-        //        fs.appendFileSync(resolvedPath, JSON.stringify(msg) + '\n', 'utf8'),
-        //    );
-        //}
-        //
+    makeRequest(messages: Message[], tools: Tools): LLMResponse {
         var resolve, reject;
 
         const done: Promise<Boolean> = new Promise((_resolve, _reject) => {
@@ -46,10 +34,12 @@ class LLM {
             reject = _reject;
         });
 
+        const toolcalls = [];
         const msg: Message = {
             role: 'assistant',
-            tool_calls: [],
+            tool_calls: toolcalls,
             content: '',
+            reasoning_content: '',
         };
 
         const result: LLMResponse = {
@@ -62,17 +52,14 @@ class LLM {
         const controller = new AbortController();
         this.abortController = controller;
 
-        const toolcalls = [];
         function processToolCallStream(stream) {
             stream.forEach((part) => {
                 let current;
                 if (!toolcalls[part.index]) {
                     toolcalls[part.index] = part;
-                    //onChunk('\nTOOLCALL : ' + part.function.name + '\n');
                 } else {
                     current = toolcalls[part.index];
                     current.function.arguments += part.function.arguments;
-                    //onChunk(part.function.arguments.replaceAll('\\n', '\n'));
                 }
             });
         }
@@ -144,6 +131,7 @@ class LLM {
                                             msg.content += content;
                                         }
                                         if (reasoningContent.length > 0) {
+                                            msg.reasoning_content += reasoningContent;
                                             result.reasoning += reasoningContent;
                                         }
                                         eventBus.emit('render');
@@ -171,7 +159,6 @@ class LLM {
                                     toolcall.function.arguments = sanitizedArgs;
                                 }
                             });
-                            msg.tool_calls = toolcalls;
                         }
 
                         if (!this.stream) {

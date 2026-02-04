@@ -16,18 +16,16 @@ const log = Log.get('agent');
 class Agent {
     window: Window;
     llm: LLM;
-    tools: Tools;
+    tools: Tools = {};
     parser: Parser;
-    singleShot: boolean;
-    messages: Message[];
+    singleShot: boolean = false;
+    messages: Message[] = [];
     config: Config;
     private loadedImageData: { base64: string; mimeType: string; fileName: string } | null = null;
+    confirmation: (text: string) => void | null = null;
 
     constructor(config: Config) {
         this.config = config;
-        this.tools = {};
-        this.singleShot = false;
-        this.messages = [];
         this.window = new Window(this.messages);
         this.parser = this.initializeParser(this.config.parserType);
         this.setupEventHandlers();
@@ -113,12 +111,21 @@ class Agent {
             this.print(value + '\n');
         });
         this.window.setPrompt(`Execute ${toolName} ${path}  (y/n): `);
-        const answer: string = await this.window.inputHandler.waitPrompt();
-        const response = (answer as string).trim().toLowerCase();
+
+        const confirm: Promise<string> = new Promise((res, rej) => {
+            this.confirmation = res;
+        });
+        const answer: string = await confirm;
+        this.confirmation = null;
+        const response = answer.trim().toLowerCase();
         return response === 'y' || response === 'yes';
     }
 
     process(input: string) {
+        if (this.confirmation) {
+            this.confirmation(input);
+            return;
+        }
         const loadedImage = this.getLoadedImageData();
         let content: any = input;
 
@@ -185,10 +192,16 @@ class Agent {
         // Handle @filename syntax
         if (input.startsWith('@')) {
             this.handleFileInput(input).then((content) => {
-                if (content != 'image') {
-                    this.process(content);
-                } else {
+                if (content === undefined) {
+                    // handleFileInput returned undefined (error case)
+                    // User already received error message, so just show prompt
                     this.showUserPrompt();
+                } else if (content === 'image') {
+                    // Image was loaded, waiting for next user input
+                    this.showUserPrompt();
+                } else {
+                    // Text content loaded, process it
+                    this.process(content);
                 }
             });
         } else {
@@ -197,14 +210,18 @@ class Agent {
     }
 
     /**
-     * Handles the @filename syntax to load file contents as input
+     * Handles the @filename syntax to load file contents as input.
+     *
+     * @param input - The input string starting with @
+     * @returns A string with the file content, 'image' if an image was loaded,
+     *          or undefined if there was an error
      */
-    async handleFileInput(input: string): Promise<string> {
+    async handleFileInput(input: string): Promise<string | undefined> {
         const fileName = input.substring(1).trim();
         if (!fileName) {
             this.print('\nUsage: @filename\n');
             this.print('Example: @README.md\n');
-            return;
+            return undefined;
         }
 
         try {
@@ -215,7 +232,7 @@ class Agent {
 
             if (!fs.existsSync(fullPath)) {
                 this.print(`\nFile not found: ${fileName}\n`);
-                return;
+                return undefined;
             }
 
             // Get file extension
@@ -264,6 +281,7 @@ class Agent {
             this.print(
                 `\nFailed to load file: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
             );
+            return undefined;
         }
     }
 
@@ -485,18 +503,13 @@ class Agent {
                 this.print('\n\x1b[32mAgent: \x1b[0m');
                 this.window.startAgent();
 
-                // Add loaded image data to the last user message if available
                 this.window.setPrompt('Llm request processing...');
-                response = this.llm.makeRequest(
-                    currentMessages,
-                    this.tools,
-                    this.print.bind(this),
-                    (chunk: string) => this.print(chunk),
-                );
+                response = this.llm.makeRequest(currentMessages, this.tools);
 
                 currentMessages.push(response.msg);
 
                 await response.done;
+
                 this.window.setPrompt('User: ');
 
                 //this.window.clearAgentInput();

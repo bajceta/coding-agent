@@ -10,7 +10,6 @@ export class TerminalInputHandler {
     private printChunk: (chunk: string) => void;
     private printWholeBuffer: (buffer: string) => void;
     private clearUserInput: () => void;
-    private prompt: ((value: string) => void) | null = null;
     private fileSelect: boolean;
     private mode: 'normal' | 'insert' = 'normal';
 
@@ -35,13 +34,6 @@ export class TerminalInputHandler {
     setMode(mode: 'normal' | 'insert') {
         this.mode = mode;
         eventBus.emit('mode', mode);
-    }
-
-    waitPrompt(): Promise<string> {
-        this.buffer = '';
-        return new Promise((resolve) => {
-            this.prompt = resolve;
-        });
     }
 
     setup() {
@@ -133,19 +125,13 @@ export class TerminalInputHandler {
                 if (code === 13) {
                     this.fileSelectMode(false);
                     // ENTER key (CR)
-                    if (this.prompt) {
-                        this.prompt(this.buffer);
-                        this.prompt = null;
-                    } else {
-                        if (this.buffer.length > 0) {
-                            this.history.push(this.buffer);
-                        }
-                        eventBus.emit('process_input', this.buffer);
-                        this.buffer = '';
-                        this.historyIndex = -1; // Reset history index
-                        this.printWholeBuffer(this.buffer);
+                    if (this.buffer.length > 0) {
+                        this.history.push(this.buffer);
                     }
+                    eventBus.emit('process_input', this.buffer);
                     this.buffer = '';
+                    this.historyIndex = -1; // Reset history index
+                    this.printWholeBuffer(this.buffer);
                     return;
                 }
 
