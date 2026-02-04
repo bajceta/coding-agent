@@ -61,7 +61,6 @@ export class TerminalInputHandler {
             if (code === 0x03) {
                 // Ctrl+C
                 eventBus.emit('exit');
-                process.exit(0);
             }
 
             // Mode handling

@@ -8,7 +8,7 @@ import { NativeParser } from './parser-native.ts';
 import Window from './window.ts';
 import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
-import type { Tools, ToolCall, ExecuteResult, Message } from './interfaces.ts';
+import type { Tools, ToolCall, ExecuteResult, Message, LLMResponse } from './interfaces.ts';
 import eventBus from './eventBus.ts';
 
 const log = Log.get('agent');
@@ -25,14 +25,14 @@ class Agent {
 
     constructor(config: Config) {
         this.config = config;
-        this.window = new Window();
-        Log.setPrintMethod(this.window.print.bind(this.window));
-        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.tools = {};
         this.singleShot = false;
         this.messages = [];
+        this.window = new Window(this.messages);
         this.parser = this.initializeParser(this.config.parserType);
         this.setupEventHandlers();
+        Log.setPrintMethod(this.window.print.bind(this.window));
+        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
     }
 
     private setupEventHandlers(): void {
@@ -50,6 +50,9 @@ class Agent {
         });
         eventBus.on('exit', () => {
             this.stopRequest();
+            setTimeout(() => {
+                process.exit(0);
+            }, 400);
         });
         eventBus.on('stop_request', () => {
             this.stopRequest();
@@ -109,7 +112,7 @@ class Agent {
             this.print(name + '\n');
             this.print(value + '\n');
         });
-        this.print(`Execute ${toolName} ${path}  (y/n): `);
+        this.window.setPrompt(`Execute ${toolName} ${path}  (y/n): `);
         const answer: string = await this.window.inputHandler.waitPrompt();
         const response = (answer as string).trim().toLowerCase();
         return response === 'y' || response === 'yes';
@@ -157,8 +160,8 @@ class Agent {
         }
 
         if (input.toLowerCase() === 'exit') {
-            this.print('\nGoodbye!\n');
-            process.exit(0);
+            this.window.setPrompt('Exiting...');
+            eventBus.emit('exit');
         }
 
         if (input.toLowerCase() === '/msgs') {
@@ -189,7 +192,6 @@ class Agent {
                 }
             });
         } else {
-            this.print(input);
             this.process(input);
         }
     }
@@ -266,7 +268,7 @@ class Agent {
     }
 
     showUserPrompt() {
-        this.print('\n\x1b[34mUser: \x1b[0m');
+        this.window.setPrompt('\x1b[34mUser: \x1b[0m');
     }
 
     async askQuestion(question: string, interactive: boolean) {
@@ -305,9 +307,9 @@ class Agent {
             models.forEach((m: any, index: number) => {
                 const isSelected = m.id === this.config.modelName;
                 const indicator = isSelected ? '✓ ' : '  ';
-                this.print(`${indicator}${index + 1}. ${m.id}\n`);
+                this.print(`${indicator}${index + 1}. ${m.id} \n`);
             });
-            this.print(`\nCurrent model: ${this.llm.modelConfig.name}\n`);
+            this.print(`\nCurrent model: ${this.llm.modelConfig.name} \n`);
         } catch (error) {
             this.handleError('Error listing models', error);
         }
@@ -327,7 +329,7 @@ class Agent {
 
             if (number < 1 || number > models.length) {
                 this.print(
-                    `\nInvalid model number. Please select between 1 and ${models.length}.\n`,
+                    `\nInvalid model number.Please select between 1 and ${models.length}.\n`,
                 );
                 return;
             }
@@ -338,11 +340,11 @@ class Agent {
             this.config.modelName = model.id;
             this.llm.updateModelConfig(model);
 
-            this.print(`\n✓ Model switched to: ${model.id}\n`);
+            this.print(`\n✓ Model switched to: ${model.id} \n`);
             this.print(
-                `  Base URL: ${this.config.models.find((m: any) => m.name === model.id)?.baseUrl}\n`,
+                `  Base URL: ${this.config.models.find((m: any) => m.name === model.id)?.baseUrl} \n`,
             );
-            this.print(`  ID: ${model.id}\n`);
+            this.print(`  ID: ${model.id} \n`);
         } catch (error) {
             this.handleError('Error selecting model', error);
         }
@@ -360,7 +362,7 @@ class Agent {
         // Check if file exists
         const fullPath = path.resolve(fileName);
         if (!fs.existsSync(fullPath)) {
-            throw new Error(`Image file not found: ${fileName}`);
+            throw new Error(`Image file not found: ${fileName} `);
         }
 
         // Get file extension
@@ -412,7 +414,7 @@ class Agent {
      */
     clearLoadedImage() {
         if (this.loadedImageData) {
-            //this.print(`\n\x1b[33mCleared loaded image: ${this.loadedImageData.fileName}\x1b[0m\n`);
+            //this.print(`\n\x1b[33mCleared loaded image: ${ this.loadedImageData.fileName } \x1b[0m\n`);
             this.loadedImageData = null;
         } else {
             this.print(`\nNo image is currently loaded.\n`);
@@ -437,7 +439,7 @@ class Agent {
                     else return JSON.stringify(arg).substring(0, 80);
                 })
                 .join(' ');
-            this.print(`\x1b[32mTOOL: ${toolName} ${showArgs}\x1b[0m\n`);
+            this.print(`\x1b[32mTOOL: ${toolName} ${showArgs} \x1b[0m\n`);
 
             // Check for confirmation
             if (!(this.config.yoloMode || tool.safe)) {
@@ -448,21 +450,22 @@ class Agent {
                 }
             }
 
-            this.print(`\x1b[32mRunning tool: ${toolName}\x1b[0m\n`);
-            log.debug(`TOOL: ${toolName} ${JSON.stringify(args)}`);
+            //this.print(`\x1b[32mRunning tool: ${toolName} \x1b[0m\n`);
+            log.debug(`TOOL: ${toolName} ${JSON.stringify(args)} `);
             // Execute tool
             const argsList: string[] = Object.values(args);
+            this.window.setPrompt('Executing tool: ' + toolName);
             const result: ExecuteResult = await tool.execute(...argsList);
             return JSON.stringify(result);
             // if (result.error) {
-            //    const err = `Tool call ${toolName} error: ${result.error} `;
+            //    const err = `Tool call ${ toolName } error: ${ result.error } `;
             //    log.error(err);
             //    return err;
             // }
             //return result.content;
         } catch (error) {
-            this.handleError(`Error executing tool ${toolcall.name}`, error);
-            return `Tool execution error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            this.handleError(`Error executing tool ${toolcall.name} `, error);
+            return `Tool execution error: ${error instanceof Error ? error.message : 'Unknown error'} `;
         }
     }
 
@@ -476,20 +479,25 @@ class Agent {
 
         while (hasToolCalls) {
             hasToolCalls = false;
-            let response;
+            let response: LLMResponse;
 
             try {
                 this.print('\n\x1b[32mAgent: \x1b[0m');
                 this.window.startAgent();
 
                 // Add loaded image data to the last user message if available
-
-                response = await this.llm.makeRequest(
+                this.window.setPrompt('Llm request processing...');
+                response = this.llm.makeRequest(
                     currentMessages,
                     this.tools,
                     this.print.bind(this),
                     (chunk: string) => this.print(chunk),
                 );
+
+                currentMessages.push(response.msg);
+
+                await response.done;
+                this.window.setPrompt('User: ');
 
                 //this.window.clearAgentInput();
                 //this.print(response.msg.content);
@@ -537,10 +545,10 @@ class Agent {
             }
         }
 
-        if (this.singleShot) {
-            process.exit(0);
-        }
         this.showUserPrompt();
+        if (this.singleShot) {
+            eventBus.emit('exit');
+        }
     }
 
     stopRequest() {
@@ -551,7 +559,7 @@ class Agent {
                 typeof lastMessage?.content === 'string'
                     ? lastMessage.content.substring(0, 30)
                     : 'Array content';
-            log.debug(`Removed last message from conversation: ${contentPreview || 'Unknown'}`);
+            log.debug(`Removed last message from conversation: ${contentPreview || 'Unknown'} `);
         }
     }
 

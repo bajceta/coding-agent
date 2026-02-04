@@ -1,9 +1,24 @@
 import StatusBar from './statusBar.ts';
 import { TerminalInputHandler } from './terminalInput.ts';
+import type { Message } from './interfaces.ts';
 import eventBus from './eventBus.ts';
+//import Log from './log.ts';
+//const log = Log.get('window');
+
+/**
+ * ANSI color codes for text formatting
+ * These are used to add color to the status bar text
+ */
+const RESET = '\x1b[0m';
+const GREEN = '\x1b[32m'; // Green for tokens count
+const BLUE = '\x1b[34m'; // Blue for tokens per second (TPS)
+const YELLOW = '\x1b[33m'; // Yellow for currently running tools
+const CYAN = '\x1b[36m'; // Cyan for model information
+const RED = '\x1b[31m'; // Red for error messages
+const MAGENTA = '\x1b[35m'; // Magenta for other status messages
 
 class Window {
-    columnPos: number;
+    columnPos: number = 0;
     statusText: string;
     statusBar: StatusBar;
     userLines: number;
@@ -14,9 +29,11 @@ class Window {
     bufferOffset: number;
     userInput: string;
     selector: string[];
+    agentMessages: Message[];
+    cursorColumn: number;
+    prompt: string = 'User: ';
 
-    constructor() {
-        this.columnPos = 0;
+    constructor(agentMessages) {
         this.userLines = 0;
         this.agentLines = 0;
         this.statusText = '';
@@ -26,6 +43,8 @@ class Window {
         this.bufferOffset = 0;
         this.userInput = '';
         this.selector = [];
+        this.agentMessages = agentMessages;
+        this.cursorColumn = 0;
 
         const nop = () => {};
         const setUserInput = this.setUserInput.bind(this);
@@ -57,6 +76,11 @@ class Window {
         process.stdout.write(`\x1b[${rows};1H\x1b[K`);
         process.stdout.write(this.statusText.substring(0, columns + escapeCodeLength - 5));
         process.stdout.write('\x1b[u'); // Restore cursor position
+    }
+
+    setPrompt(text: string): void {
+        this.prompt = text;
+        this.render();
     }
 
     setUserInput(text: string): void {
@@ -95,36 +119,63 @@ class Window {
         this.render();
     }
 
-    render() {
-        process.stdout.write('\x1b[2J\x1b[H'); // Clear screen
-        this.renderBuffer();
-        this.renderStatusBar();
+    renderMessages(): string {
+        var msgs = '';
+        for (let msg of this.agentMessages) {
+            if (msg.role == 'assistant') {
+                msgs += `${BLUE}${msg.role}: ${RESET}`;
+                if (msg.content.length > 0) msgs += msg.content + '\n';
+                if (msg.tool_calls) {
+                    for (let call of msg.tool_calls) {
+                        msgs +=
+                            'toolcall ' +
+                            call.function.name +
+                            ' ' +
+                            call.function.arguments.slice(0, 70) +
+                            '\n';
+                    }
+                }
+            } else if (msg.role == 'user') {
+                msgs += `${GREEN}${msg.role}: ${RESET}`;
+                msgs += msg.content + '\n';
+            } else if (msg.role == 'tool') {
+                msgs += `${YELLOW}${msg.role}: ${RESET}`;
+                msgs += msg.content.slice(0, 40) + '\n';
+            } else {
+                msgs += JSON.stringify(msg) + '\n';
+            }
+        }
+        return msgs;
     }
 
-    renderBuffer() {
+    content() {
         const userLines = this.userInput.split('\n');
-        const buffer = this.buffer.concat(userLines, this.selector);
+        this.cursorColumn = userLines[userLines.length - 1]?.length + 1;
+        const msgLines = this.renderMessages().split('\n');
+        return this.buffer.concat(msgLines, this.prompt.split('\n'), userLines, this.selector);
+    }
 
+    render() {
+        process.stdout.write('\x1b[2J\x1b[H'); // Clear screen
+        const buffer = this.content();
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
-        var bufferLine = Math.max(buffer.length - this.bufferOffset, 0);
+        var bufferLine = Math.max(buffer.length - 1 - this.bufferOffset, 0);
+        console.log(bufferLine);
         for (let i = rows - 2; i > 0; i--) {
-            bufferLine--;
             if (bufferLine < 0) break;
-
-            i = i - Math.trunc(buffer[bufferLine].length / columns);
-            //            if (buffer[bufferLine].length > columns) {
-            //     i--;
-            //}
+            const line = buffer[bufferLine];
+            if (line) i = i - Math.trunc(buffer[bufferLine].length / columns);
             //process.stdout.write('\x1b[s'); // Save cursor position
             process.stdout.write(`\x1b[${i};1H\x1b[K`);
             process.stdout.write(`${buffer[bufferLine]}\n`);
             //process.stdout.write('\x1b[u'); // Restore cursor position
-            if (bufferLine === 0) break;
+            //}
+            bufferLine--;
         }
         const cursorRow = rows - 2 - this.selector.length;
-        const cursorColumn = userLines[userLines.length - 1].length + 1;
-        process.stdout.write(`\x1b[${cursorRow};${cursorColumn}H\x1b[K`);
+        this.renderStatusBar();
+        process.stdout.write(`\x1b[${cursorRow};${this.cursorColumn}H\x1b[K`);
     }
 
     getStatusBar(): StatusBar {
@@ -134,7 +185,7 @@ class Window {
     private setupEventHandlers(): void {
         eventBus.on('exit', () => {
             console.log('Exit event received in window.ts');
-            for (let line of this.buffer) {
+            for (let line of this.content()) {
                 console.log(line);
             }
         });
@@ -145,7 +196,10 @@ class Window {
             this.handleScroll(direction);
         });
         eventBus.on('print_buffer', () => {
-            console.log(this.buffer);
+            console.log(this.content());
+        });
+        eventBus.on('render', () => {
+            this.render();
         });
     }
 
@@ -157,7 +211,7 @@ class Window {
                 this.bufferOffset--;
             }
         } else {
-            if (this.buffer.length > this.bufferOffset) {
+            if (this.content().length > this.bufferOffset) {
                 this.bufferOffset++;
             }
         }

@@ -24,12 +24,15 @@ export interface Message {
     role: string;
     content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
     tool_calls?: OpenaiRawToolCall[];
+    reasoning?: Boolean;
+    reasoning_content?: string;
 }
 
 export interface LLMResponse {
     stats: any;
     msg: Message;
-    reasoning?: string; // Make reasoning optional
+    reasoning?: string;
+    done: Promise<Boolean>;
 }
 
 export interface OpenaiToolDef {
