@@ -28,12 +28,13 @@ export class TerminalInputHandler {
 
     fileSelectMode(state) {
         this.fileSelect = state;
-        eventBus.emit('autocomplete_list', []);
+        eventBus.emit('selector', []);
     }
 
     setMode(mode: 'normal' | 'insert') {
         this.mode = mode;
         eventBus.emit('mode', mode);
+        eventBus.emit('selector', []);
     }
 
     setup() {
@@ -57,7 +58,6 @@ export class TerminalInputHandler {
             // ESC to exit insert mode when in insert mode
             if (code === 27) {
                 this.setMode('normal');
-                eventBus.emit('selector', []);
                 return;
             }
 
@@ -240,7 +240,7 @@ export class TerminalInputHandler {
                         } else {
                             fileList = files.slice(0, 10);
                         }
-                        eventBus.emit('autocomplete_list', fileList);
+                        eventBus.emit('selector', fileList);
                     } catch (error) {
                         console.error('Error reading directory:', error);
                     }
@@ -257,7 +257,7 @@ export class TerminalInputHandler {
                         } else {
                             fileList = files.slice(0, 10);
                         }
-                        eventBus.emit('autocomplete_list', fileList);
+                        eventBus.emit('selector', fileList);
                     } catch (error) {
                         console.error('Error reading directory:', error);
                     }

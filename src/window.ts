@@ -183,9 +183,6 @@ class Window {
                 console.log(line);
             }
         });
-        eventBus.on('autocomplete_list', (list) => {
-            this.setSelector(list);
-        });
         eventBus.on('scroll', (direction: 'up' | 'down') => {
             this.handleScroll(direction);
         });
