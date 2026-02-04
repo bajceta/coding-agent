@@ -2,20 +2,12 @@ import StatusBar from './statusBar.ts';
 import { TerminalInputHandler } from './terminalInput.ts';
 import type { Message } from './interfaces.ts';
 import eventBus from './eventBus.ts';
-//import Log from './log.ts';
-//const log = Log.get('window');
 
-/**
- * ANSI color codes for text formatting
- * These are used to add color to the status bar text
- */
 const RESET = '\x1b[0m';
-const GREEN = '\x1b[32m'; // Green for tokens count
-const BLUE = '\x1b[34m'; // Blue for tokens per second (TPS)
-const YELLOW = '\x1b[33m'; // Yellow for currently running tools
-const CYAN = '\x1b[36m'; // Cyan for model information
-const RED = '\x1b[31m'; // Red for error messages
-const MAGENTA = '\x1b[35m'; // Magenta for other status messages
+const GREEN = '\x1b[32m';
+const BLUE = '\x1b[34m';
+const YELLOW = '\x1b[33m';
+const MAGENTA = '\x1b[35m';
 
 class Window {
     columnPos: number = 0;
@@ -202,6 +194,9 @@ class Window {
         });
         eventBus.on('render', () => {
             this.render();
+        });
+        eventBus.on('selector', (list) => {
+            this.setSelector(list);
         });
     }
 

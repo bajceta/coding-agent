@@ -55,6 +55,13 @@ export class TerminalInputHandler {
                 eventBus.emit('exit');
             }
 
+            // ESC to exit insert mode when in insert mode
+            if (code === 27) {
+                this.setMode('normal');
+                eventBus.emit('selector', []);
+                return;
+            }
+
             // Mode handling
             if (this.mode === 'normal') {
                 // 'i' to enter insert mode
@@ -223,12 +230,6 @@ export class TerminalInputHandler {
                         parts.push(fileList[0]);
                         this.buffer = parts.join('@');
                     }
-                }
-
-                // ESC to exit insert mode when in insert mode
-                if (code === 27 && this.mode === 'insert') {
-                    this.setMode('normal');
-                    return;
                 }
 
                 if (this.fileSelect) {

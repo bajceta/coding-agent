@@ -10,6 +10,9 @@ import Log from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message, LLMResponse } from './interfaces.ts';
 import eventBus from './eventBus.ts';
+import { ImageHandler } from './image-handler.ts';
+import { FileHandler } from './file-handler.ts';
+import { ModelManager } from './model-manager.ts';
 
 const log = Log.get('agent');
 
@@ -21,16 +24,21 @@ class Agent {
     singleShot: boolean = false;
     messages: Message[] = [];
     config: Config;
-    private loadedImageData: { base64: string; mimeType: string; fileName: string } | null = null;
+    imageHandler: ImageHandler;
+    fileHandler: FileHandler;
+    modelManager: ModelManager;
     confirmation: (text: string) => void | null = null;
 
     constructor(config: Config) {
         this.config = config;
         this.window = new Window(this.messages);
         this.parser = this.initializeParser(this.config.parserType);
+        this.imageHandler = new ImageHandler();
+        this.fileHandler = new FileHandler();
+        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
+        this.modelManager = new ModelManager(this.llm, this.config);
         this.setupEventHandlers();
         Log.setPrintMethod(this.window.print.bind(this.window));
-        this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
     }
 
     private setupEventHandlers(): void {
@@ -112,7 +120,7 @@ class Agent {
         });
         this.window.setPrompt(`Execute ${toolName} ${path}  (y/n): `);
 
-        const confirm: Promise<string> = new Promise((res, rej) => {
+        const confirm: Promise<string> = new Promise((res) => {
             this.confirmation = res;
         });
         const answer: string = await confirm;
@@ -126,7 +134,7 @@ class Agent {
             this.confirmation(input);
             return;
         }
-        const loadedImage = this.getLoadedImageData();
+        const loadedImage = this.imageHandler.getLoadedImageData();
         let content: any = input;
 
         if (loadedImage) {
@@ -140,7 +148,7 @@ class Agent {
                     },
                 },
             ];
-            this.clearLoadedImage();
+            this.imageHandler.clearLoadedImage();
         }
 
         this.messages.push({
@@ -169,6 +177,7 @@ class Agent {
         if (input.toLowerCase() === 'exit') {
             this.window.setPrompt('Exiting...');
             eventBus.emit('exit');
+            return;
         }
 
         if (input.toLowerCase() === '/msgs') {
@@ -184,26 +193,14 @@ class Agent {
         }
 
         if (input.toLowerCase().startsWith('/clearimg')) {
-            this.clearLoadedImage();
+            this.imageHandler.clearLoadedImage();
             this.showUserPrompt();
             return;
         }
 
         // Handle @filename syntax
         if (input.startsWith('@')) {
-            this.handleFileInput(input).then((content) => {
-                if (content === undefined) {
-                    // handleFileInput returned undefined (error case)
-                    // User already received error message, so just show prompt
-                    this.showUserPrompt();
-                } else if (content === 'image') {
-                    // Image was loaded, waiting for next user input
-                    this.showUserPrompt();
-                } else {
-                    // Text content loaded, process it
-                    this.process(content);
-                }
-            });
+            this.handleFileInput(input);
         } else {
             this.process(input);
         }
@@ -211,77 +208,48 @@ class Agent {
 
     /**
      * Handles the @filename syntax to load file contents as input.
-     *
-     * @param input - The input string starting with @
-     * @returns A string with the file content, 'image' if an image was loaded,
-     *          or undefined if there was an error
      */
-    async handleFileInput(input: string): Promise<string | undefined> {
-        const fileName = input.substring(1).trim();
-        if (!fileName) {
-            this.print('\nUsage: @filename\n');
-            this.print('Example: @README.md\n');
-            return undefined;
+    async handleFileInput(input: string): Promise<void> {
+        const result = await this.fileHandler.handleFileInput(input);
+
+        if (result === undefined) {
+            this.print(`\nFile not found or invalid file.\n`);
+            this.showUserPrompt();
+            return;
         }
 
+        if (result === 'image') {
+            // Handle as image
+            const fileName = this.fileHandler.getFileNameFromInput(input);
+            await this.loadAndShowImage(fileName);
+            this.showUserPrompt();
+        } else {
+            // Text content loaded, process it
+            this.process(result);
+        }
+    }
+
+    /**
+     * Loads and displays image information
+     */
+    async loadAndShowImage(fileName: string): Promise<void> {
         try {
-            // Check if file exists
-            const fs = await import('fs');
-            const path = await import('path');
-            const fullPath = path.resolve(fileName);
-
-            if (!fs.existsSync(fullPath)) {
-                this.print(`\nFile not found: ${fileName}\n`);
-                return undefined;
-            }
-
-            // Get file extension
-            const ext = path.extname(fileName).toLowerCase();
-
-            // Check if it's an image file
-            const imageExtensions = [
-                '.png',
-                '.jpg',
-                '.jpeg',
-                '.gif',
-                '.webp',
-                '.bmp',
-                '.tiff',
-                '.ico',
-            ];
-            if (imageExtensions.includes(ext.toLowerCase())) {
-                // Handle as image like /img command
-                const imageData = await this.loadImageToBase64(fileName);
-                this.loadedImageData = imageData;
-                this.print(`\n✓ Image loaded successfully!\n`);
-                this.print(`File: ${fileName}\n`);
-                this.print(`MIME type: ${imageData.mimeType}\n`);
-                this.print(
-                    `Size: ${((imageData.base64.length * 3) / 4 / 1024 / 1024).toFixed(2)} MB\n`,
-                );
-                this.print(
-                    `Base64 length: ${imageData.base64.length.toLocaleString()} characters\n`,
-                );
-                this.print(
-                    '\nThe image is now stored in memory and will be included in the next prompt.\n',
-                );
-                return 'image';
-            } else {
-                // Load as text file
-                const fileContent = fs.readFileSync(fullPath, 'utf-8');
-                const content = `filename: ${fileName}, content: ${fileContent}`;
-
-                this.print(`\n✓ File loaded successfully!\n`);
-                this.print(`File: ${fileName}\n`);
-                this.print(`Content length: ${fileContent.length.toLocaleString()} characters\n`);
-                return content;
-            }
-        } catch (error) {
-            this.handleError('Error processing @filename command', error);
+            const imageData = await this.imageHandler.loadImageToBase64(fileName);
+            this.print(`\n✓ Image loaded successfully!\n`);
+            this.print(`File: ${fileName}\n`);
+            this.print(`MIME type: ${imageData.mimeType}\n`);
             this.print(
-                `\nFailed to load file: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
+                `Size: ${((imageData.base64.length * 3) / 4 / 1024 / 1024).toFixed(2)} MB\n`,
             );
-            return undefined;
+            this.print(`Base64 length: ${imageData.base64.length.toLocaleString()} characters\n`);
+            this.print(
+                '\nThe image is now stored in memory and will be included in the next prompt.\n',
+            );
+        } catch (error) {
+            this.handleError('Error loading image', error);
+            this.print(
+                `\nFailed to load image: ${error instanceof Error ? error.message : 'Unknown error'}\n`,
+            );
         }
     }
 
@@ -308,134 +276,21 @@ class Agent {
      * Handles the list_models event to show all available models
      */
     async handleListModels(): Promise<void> {
-        try {
-            const modelsData = await this.llm.fetchModels();
-            const models = modelsData.data || [];
-
-            if (!Array.isArray(models)) {
-                throw new Error('Invalid models response format');
-            }
-
-            if (models.length === 0) {
-                this.print('\nNo models available.\n');
-                return;
-            }
-
-            this.print('\nAvailable models:\n');
-            models.forEach((m: any, index: number) => {
-                const isSelected = m.id === this.config.modelName;
-                const indicator = isSelected ? '✓ ' : '  ';
-                this.print(`${indicator}${index + 1}. ${m.id} \n`);
-            });
-            this.print(`\nCurrent model: ${this.llm.modelConfig.name} \n`);
-        } catch (error) {
-            this.handleError('Error listing models', error);
-        }
+        await this.modelManager.handleListModels();
+        this.print(`\nCurrent model: ${this.llm.modelConfig.name} \n`);
     }
 
     /**
      * Handles the select_model event to select a model by number
      */
     async handleSelectModelByNumber(number: number): Promise<void> {
-        try {
-            const modelsData = await this.llm.fetchModels();
-            const models = modelsData.data || [];
-
-            if (!Array.isArray(models)) {
-                throw new Error('Invalid models response format');
-            }
-
-            if (number < 1 || number > models.length) {
-                this.print(
-                    `\nInvalid model number.Please select between 1 and ${models.length}.\n`,
-                );
-                return;
-            }
-
-            const model = models[number - 1];
-
-            // Update the config
-            this.config.modelName = model.id;
-            this.llm.updateModelConfig(model);
-
-            this.print(`\n✓ Model switched to: ${model.id} \n`);
-            this.print(
-                `  Base URL: ${this.config.models.find((m: any) => m.name === model.id)?.baseUrl} \n`,
-            );
-            this.print(`  ID: ${model.id} \n`);
-        } catch (error) {
-            this.handleError('Error selecting model', error);
-        }
-    }
-
-    /**
-     * Loads an image file and converts it to base64 format
-     */
-    private async loadImageToBase64(
-        fileName: string,
-    ): Promise<{ base64: string; mimeType: string; fileName: string }> {
-        const fs = await import('fs');
-        const path = await import('path');
-
-        // Check if file exists
-        const fullPath = path.resolve(fileName);
-        if (!fs.existsSync(fullPath)) {
-            throw new Error(`Image file not found: ${fileName} `);
-        }
-
-        // Get file extension
-        const ext = path.extname(fileName).toLowerCase();
-
-        // Read file as buffer
-        const imageBuffer = fs.readFileSync(fullPath);
-
-        // Convert to base64
-        const base64Image = imageBuffer.toString('base64');
-
-        // Get MIME type
-        const mimeType = this.getMimeType(ext);
-
-        return {
-            base64: base64Image,
-            mimeType,
-            fileName,
-        };
-    }
-
-    /**
-     * Returns the MIME type for a given file extension
-     */
-    private getMimeType(extension: string): string {
-        const mimeTypes: Record<string, string> = {
-            '.png': 'image/png',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.bmp': 'image/bmp',
-            '.tiff': 'image/tiff',
-            '.ico': 'image/x-icon',
-        };
-        return mimeTypes[extension] || 'image/jpeg';
-    }
-
-    /**
-     * Retrieves the loaded image data and prepares it for the next LLM request
-     * Returns null if no image is loaded
-     */
-    getLoadedImageData(): { base64: string; mimeType: string; fileName: string } | null {
-        return this.loadedImageData;
-    }
-
-    /**
-     * Clears the loaded image from memory
-     */
-    clearLoadedImage() {
-        if (this.loadedImageData) {
-            //this.print(`\n\x1b[33mCleared loaded image: ${ this.loadedImageData.fileName } \x1b[0m\n`);
-            this.loadedImageData = null;
+        const success = await this.modelManager.handleSelectModelByNumber(number);
+        if (success) {
+            this.print(`\n✓ Model switched to: ${this.llm.modelConfig.model} \n`);
         } else {
-            this.print(`\nNo image is currently loaded.\n`);
+            this.print(
+                `\nInvalid model number. Please select between 1 and ${this.llm.modelConfig.model.length}.\n`,
+            );
         }
     }
 
@@ -468,19 +323,12 @@ class Agent {
                 }
             }
 
-            //this.print(`\x1b[32mRunning tool: ${toolName} \x1b[0m\n`);
             log.debug(`TOOL: ${toolName} ${JSON.stringify(args)} `);
             // Execute tool
             const argsList: string[] = Object.values(args);
             this.window.setPrompt('Executing tool: ' + toolName);
             const result: ExecuteResult = await tool.execute(...argsList);
             return JSON.stringify(result);
-            // if (result.error) {
-            //    const err = `Tool call ${ toolName } error: ${ result.error } `;
-            //    log.error(err);
-            //    return err;
-            // }
-            //return result.content;
         } catch (error) {
             this.handleError(`Error executing tool ${toolcall.name} `, error);
             return `Tool execution error: ${error instanceof Error ? error.message : 'Unknown error'} `;
@@ -512,10 +360,6 @@ class Agent {
 
                 this.window.setPrompt('User: ');
 
-                //this.window.clearAgentInput();
-                //this.print(response.msg.content);
-
-                //this.print('\n');
                 if (response && response.stats) {
                     const stats = response.stats;
                     this.window.statusBar.updateState({
