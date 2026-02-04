@@ -46,7 +46,6 @@ export class TerminalInputHandler {
 
         let fileList = [];
 
-        let escCount: number = 0;
         this.stdin.on('data', (chunk: string) => {
             const code = chunk.charCodeAt(0);
 

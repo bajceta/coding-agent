@@ -201,8 +201,6 @@ class Window {
     }
 
     private handleScroll(direction: 'up' | 'down') {
-        const rows = process.stdout.rows;
-
         if (direction === 'down') {
             if (this.bufferOffset > 0) {
                 this.bufferOffset--;

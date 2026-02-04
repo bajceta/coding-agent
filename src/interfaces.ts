@@ -24,7 +24,7 @@ export interface Message {
     role: string;
     content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
     tool_calls?: OpenaiRawToolCall[];
-    reasoning?: Boolean;
+    reasoning?: boolean;
     reasoning_content?: string;
 }
 
@@ -32,7 +32,7 @@ export interface LLMResponse {
     stats: any;
     msg: Message;
     reasoning?: string;
-    done: Promise<Boolean>;
+    done: Promise<boolean>;
 }
 
 export interface OpenaiToolDef {

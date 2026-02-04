@@ -2,8 +2,6 @@ import { getDefaultModel, getConfig } from './config.ts';
 import { openaiTools } from './parser-native.ts';
 import type { Tools, Message, LLMResponse } from './interfaces.ts';
 import Stats from './stats.ts';
-import fs from 'fs';
-import path from 'path';
 import Log from './log.ts';
 import eventBus from './eventBus.ts';
 import https from 'node:https';
@@ -29,7 +27,7 @@ class LLM {
     makeRequest(messages: Message[], tools: Tools): LLMResponse {
         var resolve, reject;
 
-        const done: Promise<Boolean> = new Promise((_resolve, _reject) => {
+        const done: Promise<boolean> = new Promise((_resolve, _reject) => {
             resolve = _resolve;
             reject = _reject;
         });
@@ -87,7 +85,6 @@ class LLM {
                 method: 'POST',
             };
 
-            const decoder = new TextDecoder();
             var raw = '';
             log.info(`options: ${JSON.stringify(options)}`);
             log.info(`url: ${this.modelConfig.baseUrl} `);
@@ -135,7 +132,7 @@ class LLM {
                                             result.reasoning += reasoningContent;
                                         }
                                         eventBus.emit('render');
-                                    } catch (_error) {
+                                    } catch {
                                         //log.error('Failed parsing: ' + data + ' error ' + error.message);
                                     }
                                 }
