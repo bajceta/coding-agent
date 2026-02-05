@@ -11,15 +11,14 @@ const log = Log.get('llm');
 
 class LLM {
     modelConfig: any;
-    abortController: AbortController | null;
     stats: Stats;
     config: any;
     stream: boolean;
+    currentRequest: any;
 
     constructor(onUpdate: (state: any) => void) {
         this.modelConfig = getDefaultModel();
         this.stats = new Stats(onUpdate);
-        this.abortController = null;
         this.config = getConfig();
         this.stream = true;
     }
@@ -46,9 +45,6 @@ class LLM {
             done,
             reasoning: '',
         };
-
-        const controller = new AbortController();
-        this.abortController = controller;
 
         function processToolCallStream(stream) {
             stream.forEach((part) => {
@@ -173,15 +169,19 @@ class LLM {
                             result.msg.reasoning_content = m.reasoning_content;
                         }
                         resolve(true);
+                        this.currentRequest = null;
                     });
                 },
             );
+
+            this.currentRequest = req;
 
             req.on('error', (e) => {
                 error = true;
                 log.error(`problem with request: ${e.message}`);
                 log.error(JSON.stringify(e));
                 reject(e);
+                this.currentRequest = null;
                 //log.error(`HTTP error! status: ${response.status}`);
                 //throw new Error(`HTTP error! status: ${response.status}`);
             });
@@ -195,9 +195,9 @@ class LLM {
     }
 
     stopRequest() {
-        if (this.abortController) {
-            this.abortController.abort();
-            this.abortController = null;
+        if (this.currentRequest) {
+            this.currentRequest.abort();
+            this.currentRequest = null;
         }
     }
 

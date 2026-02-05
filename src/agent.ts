@@ -410,6 +410,7 @@ class Agent {
 
     stopRequest() {
         this.llm.stopRequest();
+        this.showUserPrompt();
         if (this.messages && this.messages.length > 0) {
             const lastMessage = this.messages.pop();
             const contentPreview =
