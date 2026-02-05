@@ -143,6 +143,6 @@ export default {
         },
     ],
     execute,
-    enabled: true,
+    enabled: false,
     safe: false,
 };
