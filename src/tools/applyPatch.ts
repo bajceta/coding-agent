@@ -22,7 +22,7 @@ async function execute(_path: string, patch: string): Promise<ExecuteResult> {
 
         // Apply the patch using the patch command
         // -p1 preserves the path structure from the patch file
-        const result = await runCommand.execute(`patch -p1 '${patchFilePath}'`);
+        const result = await runCommand.execute(`patch -i '${patchFilePath}' ${resolvedPath} `);
 
         // Clean up the temporary patch file
         await import('fs').then((fs) => fs.promises.unlink(patchFilePath).catch(() => {}));
