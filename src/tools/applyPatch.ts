@@ -57,6 +57,6 @@ export default {
         { patch: 'patch content in unified diff format' },
     ],
     execute,
-    enabled: true,
+    enabled: false,
     safe: false,
 };
