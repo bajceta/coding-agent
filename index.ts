@@ -18,6 +18,7 @@ async function main() {
     }
 
     let question: string | undefined = undefined;
+    let fileinput: string | undefined = undefined;
     let helpFlag: boolean = false;
     let modelNumber: number | null = null;
     const args: string[] = process.argv.slice(2);
@@ -77,8 +78,8 @@ async function main() {
                 const filePath = args[i + 1];
                 const resolvedPath = path.resolve(filePath);
                 try {
-                    if (!question) question = '';
-                    question +=
+                    if (!fileinput) fileinput = '';
+                    fileinput +=
                         'FilePath: ' +
                         filePath +
                         '\nFile start:\n' +
@@ -140,8 +141,8 @@ async function main() {
     }
 
     // Handle command line arguments
-    if (question) {
-        await agent.askQuestion(question, interactive);
+    if (question || fileinput) {
+        await agent.askQuestion(fileinput + '\n Prompt: ' + question, interactive);
     } else if (isTTY) {
         agent.showUserPrompt();
     } else {

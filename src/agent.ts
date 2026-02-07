@@ -21,7 +21,6 @@ class Agent {
     llm: LLM;
     tools: Tools = {};
     parser: Parser;
-    singleShot: boolean = false;
     messages: Message[] = [];
     config: Config;
     imageHandler: ImageHandler;
@@ -263,13 +262,15 @@ class Agent {
         }
 
         this.print('\nQuestion: ' + question);
-        this.singleShot = !interactive;
         this.messages.push({
             role: 'user',
             content: question,
         });
 
         await this.run();
+        if (!interactive) {
+            eventBus.emit('exit');
+        }
     }
 
     /**
@@ -339,12 +340,24 @@ class Agent {
         this.window.print(chunk);
     }
 
+    updateStats(stats) {
+        this.window.statusBar.updateState({
+            promptTokens: stats.promptTokens,
+            promptCachedTokens: stats.promptCachedTokens,
+            completionTokens: stats.completionTokens,
+            totalTokens: stats.completionTokens,
+            tokensPerSecond: stats.tokensPerSecond,
+            promptProcessingPerSecond: stats.promptProcessingPerSecond,
+            model: this.llm.modelConfig.model,
+        });
+    }
+
     async run() {
         let currentMessages = this.messages;
-        let hasToolCalls = true;
+        let complete = false;
 
-        while (hasToolCalls) {
-            hasToolCalls = false;
+        while (!complete) {
+            complete = true;
             let response: LLMResponse;
 
             try {
@@ -353,30 +366,14 @@ class Agent {
 
                 this.window.setPrompt('Llm request processing...');
                 response = this.llm.makeRequest(currentMessages, this.tools);
-
                 currentMessages.push(response.msg);
-
                 await response.done;
-
-                this.window.setPrompt('User: ');
-
-                if (response && response.stats) {
-                    const stats = response.stats;
-                    this.window.statusBar.updateState({
-                        promptTokens: stats.promptTokens,
-                        promptCachedTokens: stats.promptCachedTokens,
-                        completionTokens: stats.completionTokens,
-                        totalTokens: stats.completionTokens,
-                        tokensPerSecond: stats.tokensPerSecond,
-                        promptProcessingPerSecond: stats.promptProcessingPerSecond,
-                        model: this.llm.modelConfig.model,
-                    });
-                }
+                this.updateStats(response.stats);
 
                 const toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
 
                 if (toolCalls.length > 0) {
-                    hasToolCalls = true;
+                    complete = false;
                     for (const toolCall of toolCalls) {
                         this.window.statusBar.setTool(toolCall.name);
                         const result = await this.processToolCall(toolCall);
@@ -403,9 +400,6 @@ class Agent {
         }
 
         this.showUserPrompt();
-        if (this.singleShot) {
-            eventBus.emit('exit');
-        }
     }
 
     stopRequest() {

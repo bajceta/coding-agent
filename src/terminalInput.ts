@@ -96,6 +96,11 @@ export class TerminalInputHandler {
                     return;
                 }
 
+                if (chunk === 's') {
+                    eventBus.emit('showmore');
+                    return;
+                }
+
                 if (chunk === 'q') {
                     eventBus.emit('stop_request');
                     return;

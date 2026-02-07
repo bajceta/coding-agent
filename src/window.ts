@@ -24,6 +24,7 @@ class Window {
     agentMessages: Message[];
     cursorColumn: number;
     prompt: string = 'User: ';
+    showmore: boolean = false;
 
     constructor(agentMessages) {
         this.userLines = 0;
@@ -121,11 +122,15 @@ class Window {
                 if (msg.content.length > 0) msgs += msg.content + '\n';
                 if (msg.tool_calls) {
                     for (let call of msg.tool_calls) {
+                        const _args = this.showmore
+                            ? call.function.arguments
+                            : call.function.arguments.slice(0, 70);
+                        const _lines = _args.split('\\n');
                         msgs +=
                             'toolcall ' +
                             call.function.name +
                             ' ' +
-                            call.function.arguments.slice(0, 70) +
+                            _lines.join('\n').replaceAll('\\"', '"').replaceAll('\\\\', '\\') +
                             '\n';
                     }
                 }
@@ -134,7 +139,8 @@ class Window {
                 msgs += msg.content + '\n';
             } else if (msg.role == 'tool') {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
-                msgs += msg.content.slice(0, 40) + '\n';
+                if (this.showmore) msgs += msg.content + '\n';
+                else msgs += msg.content.slice(0, 80) + '\n';
             } else {
                 msgs += JSON.stringify(msg) + '\n';
             }
@@ -194,6 +200,10 @@ class Window {
         });
         eventBus.on('selector', (list) => {
             this.setSelector(list);
+        });
+        eventBus.on('showmore', () => {
+            this.showmore = !this.showmore;
+            this.render();
         });
     }
 
