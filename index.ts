@@ -80,7 +80,7 @@ async function main() {
                 try {
                     if (!fileinput) fileinput = '';
                     fileinput +=
-                        'FilePath: ' +
+                        'input file: ' +
                         filePath +
                         '\nFile start:\n' +
                         fs.readFileSync(resolvedPath, 'utf8') +
