@@ -88,30 +88,11 @@ async function execute(
 
         // If no replacements were made, provide better feedback
         if (replacementsMade === 0) {
-            const searchContent = opts.caseSensitive ? content : content.toLowerCase();
-            const searchText = opts.caseSensitive ? oldText : oldText.toLowerCase();
-
-            if (!searchContent.includes(searchText)) {
-                // Try to find similar text with fuzzy matching for better user experience
-                const lines = content.split('\n');
-                let foundSimilar = false;
-
-                for (const line of lines) {
-                    const lineContent = opts.caseSensitive ? line : line.toLowerCase();
-                    if (lineContent.includes(searchText)) {
-                        foundSimilar = true;
-                        break;
-                    }
-                }
-
-                if (!foundSimilar) {
-                    return {
-                        success: false,
-                        content: null,
-                        error: `Text "${oldText}" not found in file ${resolvedPath}. Note: This tool is designed to be more forgiving but still requires exact text matching.`,
-                    };
-                }
-            }
+            return {
+                success: false,
+                content: null,
+                error: `Text not found in file ${resolvedPath}. Please verify the text and try again.`,
+            };
         }
 
         await fs.promises.writeFile(resolvedPath, newContent, 'utf8');
