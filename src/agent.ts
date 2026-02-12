@@ -166,38 +166,58 @@ class Agent {
         }
     }
 
+    /**
+     * Command handlers for special input patterns.
+     * Each handler takes the input string and returns void.
+     */
+    private commandHandlers: Record<string, (input: string) => void> = {
+        '/msgs': (input) => {
+            this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
+            this.showUserPrompt();
+        },
+        '/pop': (input) => {
+            if (this.messages.length > 0) {
+                this.messages.pop();
+            } else {
+                this.print('No messages to pop.');
+            }
+            this.showUserPrompt();
+        },
+    };
+
+    /**
+     * Handles user input, routing to appropriate command handlers or processing.
+     */
     processInput(input: string) {
+        // Validate empty input
         if (!input.trim()) {
             this.print('Input cannot be empty.');
             this.showUserPrompt();
             return;
         }
 
+        // Handle exit command
         if (input.toLowerCase() === 'exit') {
             this.window.setPrompt('Exiting...');
             eventBus.emit('exit');
             return;
         }
 
-        if (input.toLowerCase() === '/msgs') {
-            this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
-            this.showUserPrompt();
+        // Check for exact-match command handlers
+        const lowercaseInput = input.toLowerCase();
+        if (lowercaseInput in this.commandHandlers) {
+            this.commandHandlers[lowercaseInput](input);
             return;
         }
 
-        if (input.toLowerCase() === '/pop') {
-            this.messages.pop();
-            this.showUserPrompt();
-            return;
-        }
-
-        if (input.toLowerCase().startsWith('/clearimg')) {
+        // Handle /clearimg command (prefix match)
+        if (lowercaseInput.startsWith('/clearimg')) {
             this.imageHandler.clearLoadedImage();
             this.showUserPrompt();
             return;
         }
 
-        // Handle @filename syntax
+        // Handle @filename syntax for file input
         if (input.startsWith('@')) {
             this.handleFileInput(input);
         } else {
