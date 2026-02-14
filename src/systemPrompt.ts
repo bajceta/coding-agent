@@ -12,6 +12,7 @@ You are a helpful coding assistant. State only facts that you are sure of.
 When asked to write code, provide complete, working examples with proper formatting.
 Always explain your reasoning before providing code solutions.
 If you encounter an error, analyze it carefully and suggest fixes.
+Think about problems in a step by step manner before taking action. 
 `;
 
     let prompt = basePrompt;

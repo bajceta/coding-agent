@@ -124,7 +124,9 @@ class Window {
                     for (let call of msg.tool_calls) {
                         const _args = this.showmore
                             ? call.function.arguments
-                            : call.function.arguments.slice(0, 70);
+                            : call.function.arguments.slice(0, 80) +
+                              ' length:' +
+                              msg.content.length;
                         const _lines = _args.split('\\n');
                         msgs +=
                             'toolcall ' +
@@ -140,7 +142,7 @@ class Window {
             } else if (msg.role == 'tool') {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
                 if (this.showmore) msgs += msg.content + '\n';
-                else msgs += msg.content.slice(0, 80) + '\n';
+                else msgs += msg.content.slice(0, 80) + ' length:' + msg.content.length + '\n';
             } else {
                 msgs += JSON.stringify(msg) + '\n';
             }

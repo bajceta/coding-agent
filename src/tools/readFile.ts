@@ -29,16 +29,12 @@ async function execute(_path: string, offset?: number, max?: number): Promise<Ex
 
         // Calculate actual start and end positions
         let startIndex = 0;
+        let endIndex = lines.length;
         if (offset !== undefined && offset >= 0) {
             startIndex = Math.min(offset, lines.length);
-        }
-
-        let endIndex = lines.length;
-        if (max !== undefined && max > 0) {
-            endIndex = Math.min(startIndex + max, lines.length);
-        } else if (offset !== undefined && offset >= 0) {
-            // If no max specified but offset is given, read to end
-            endIndex = lines.length;
+            if (max !== undefined && max > 0) {
+                endIndex = Math.min(startIndex + max, lines.length);
+            }
         }
 
         // Extract the desired portion
