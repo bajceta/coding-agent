@@ -15,7 +15,9 @@
         "lint": "npx --yes tsc -p tsconfig.json && npx --yes oxlint",
         "test": "jest"
     },
-    "dependencies": {},
+    "dependencies": {
+        "commander": "^11.1.0"
+    },
     "devDependencies": {
         "@types/node": "^24.10.2",
         "jest": "^29.7.0",
