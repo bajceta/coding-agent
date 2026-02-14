@@ -47,7 +47,7 @@ async function main() {
             helpFlag = true;
             intro = false;
         } else if (args[i] === '--model' || args[i] === '-m') {
-            if (i + 1 < args.length) {
+            if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
                 const modelArg = args[i + 1];
                 const modelNumberValue = parseInt(modelArg, 10);
 
@@ -60,6 +60,12 @@ async function main() {
                     config.models[0].model = modelArg;
                 }
                 i++;
+            } else {
+                // No value provided after -m, list available models
+                const agent: Agent = new (await import('./src/agent.ts')).default(config);
+                await agent.init();
+                await agent.handleListModels();
+                process.exit(0);
             }
         } else if (args[i] === '--log-file' || args[i] === '-l') {
             if (i + 1 < args.length) {

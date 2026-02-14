@@ -139,6 +139,7 @@ class Window {
             } else if (msg.role == 'user') {
                 msgs += `${GREEN}${msg.role}: ${RESET}`;
                 msgs += msg.content + '\n';
+            } else if (msg.role == 'system') {
             } else if (msg.role == 'tool') {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
                 if (this.showmore) msgs += msg.content + '\n';

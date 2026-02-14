@@ -46,7 +46,7 @@ export class ModelManager {
     /**
      * Handles the list_models event to show all available models
      */
-    async handleListModels(): Promise<void> {
+    async handleListModels(print: boolean): Promise<void> {
         try {
             const modelsData = await this.llm.fetchModels();
             const models = modelsData.data || [];
@@ -67,7 +67,11 @@ export class ModelManager {
                 log.info(item);
                 list.push(item);
             }
-            eventBus.emit('selector', list);
+            if (print) {
+                console.log(list);
+            } else {
+                eventBus.emit('selector', list);
+            }
         } catch {
             // Error already logged in listModels
         }
