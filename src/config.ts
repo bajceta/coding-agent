@@ -9,6 +9,7 @@ interface ModelConfig {
 }
 
 export interface Config {
+    tools: any;
     logLevel: string;
     yoloMode: boolean;
     models: ModelConfig[];
@@ -18,6 +19,7 @@ export interface Config {
     logFile: string;
     rulesFile: string;
     modelName: string;
+    stream: boolean;
 }
 
 const defaultConfig: Config = {
@@ -37,6 +39,8 @@ const defaultConfig: Config = {
     logFile: '',
     rulesFile: '',
     modelName: 'default',
+    stream: true,
+    tools: true,
 };
 
 let config: Config = null;

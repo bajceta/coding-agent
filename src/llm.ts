@@ -13,14 +13,12 @@ class LLM {
     modelConfig: any;
     stats: Stats;
     config: any;
-    stream: boolean;
     currentRequest: any;
 
     constructor(onUpdate: (state: any) => void) {
         this.modelConfig = getDefaultModel();
         this.stats = new Stats(onUpdate);
         this.config = getConfig();
-        this.stream = true;
     }
 
     makeRequest(messages: Message[], tools: Tools): LLMResponse {
@@ -65,7 +63,7 @@ class LLM {
             tool_choice: 'auto',
             parallel_tool_calls: true,
         };
-        if (this.stream) {
+        if (this.config.stream) {
             requestBody['stream'] = true;
             requestBody['stream_options'] = { include_usage: true };
         }
@@ -98,7 +96,7 @@ class LLM {
                     res.setEncoding('utf8');
                     res.on('data', (value) => {
                         //log.info(`BODY: ${value}`);
-                        if (this.stream) {
+                        if (this.config.stream) {
                             //const chunk = decoder.decode(value);
                             this.stats.incrementToken();
                             const lines = value.split('\n');
@@ -141,7 +139,7 @@ class LLM {
                         if (error) return;
                         log.info('No more data in response.');
                         this.stats.end();
-                        if (this.stream) {
+                        if (this.config.stream) {
                             //qwen3 on vllm fix
                             toolcalls.forEach((toolcall) => {
                                 const args = toolcall.function.arguments;
@@ -154,7 +152,7 @@ class LLM {
                             });
                         }
 
-                        if (!this.stream) {
+                        if (!this.config.stream) {
                             console.log(raw);
                             const _res = JSON.parse(raw);
                             try {

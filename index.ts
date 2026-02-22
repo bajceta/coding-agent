@@ -18,6 +18,8 @@ program
     .option('--disable-containers', 'Disables container mode', false)
     .option('--enable-containers', 'Enables container mode', false)
     .option('--no-intro', 'Disables the introductory message', false)
+    .option('--no-stream', 'Disables streaming api', true)
+    .option('--no-tools', 'Disables tools', true)
     .option('-l, --log-file <file>', 'Sets the log file path')
     .option('-m, --model <name>', 'Sets the model name to use or list available models')
     .option('-it, --interactive', 'Enables interactive mode')
@@ -28,17 +30,20 @@ program
 program.parse(process.argv);
 
 const options = program.opts();
+console.log(options);
 const args = program.args;
 
 async function main() {
     initConfig();
 
     const config = getConfig();
-
+    console.log(options);
     // Map commander options to config
     config.parserType = options.parser;
     config.logLevel = options.logLevel;
     config.yoloMode = options.yolo;
+    config.stream = options.stream;
+    config.tools = options.tools;
     config.container = options.enableContainers
         ? true
         : options.disableContainers

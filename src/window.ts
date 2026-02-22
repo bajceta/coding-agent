@@ -117,16 +117,16 @@ class Window {
         for (let msg of this.agentMessages) {
             if (msg.role == 'assistant') {
                 msgs += `${BLUE}${msg.role}: ${RESET}`;
-                if (msg.reasoning_content.length > 0)
+                if (msg.reasoning_content && msg.reasoning_content.length > 0)
                     msgs += MAGENTA + msg.reasoning_content + RESET + '\n';
-                if (msg.content.length > 0) msgs += msg.content + '\n';
+                if (msg.content && msg.content.length > 0) msgs += msg.content + '\n';
                 if (msg.tool_calls) {
                     for (let call of msg.tool_calls) {
                         const _args = this.showmore
                             ? call.function.arguments
                             : call.function.arguments.slice(0, 80) +
                               ' length:' +
-                              msg.content.length;
+                              call.function.arguments?.length;
                         const _lines = _args.split('\\n');
                         msgs +=
                             'toolcall ' +
@@ -137,10 +137,10 @@ class Window {
                     }
                 }
             } else if (msg.role == 'user') {
-                msgs += `${GREEN}${msg.role}: ${RESET}`;
                 msgs += msg.content + '\n';
+                msgs += `${GREEN}${msg.role}: ${RESET}`;
             } else if (msg.role == 'system') {
-            } else if (msg.role == 'tool') {
+            } else if (msg.role == 'tool' && msg.content) {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
                 if (this.showmore) msgs += msg.content + '\n';
                 else msgs += msg.content.slice(0, 80) + ' length:' + msg.content.length + '\n';

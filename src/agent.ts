@@ -94,8 +94,10 @@ class Agent {
     }
 
     async loadTools() {
-        const tools = await loadTools();
-        this.tools = tools;
+        if (this.config.tools) {
+            const tools = await loadTools();
+            this.tools = tools;
+        }
         log.info(`Loaded ${Object.keys(this.tools).length} tools`);
     }
 
