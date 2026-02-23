@@ -8,6 +8,13 @@ interface ModelConfig {
     model: string;
 }
 
+interface MCPServerConfig {
+    name: string;
+    command: string;
+    args?: string[];
+    env?: Record<string, string>;
+}
+
 export interface Config {
     tools: any;
     logLevel: string;
@@ -20,6 +27,7 @@ export interface Config {
     rulesFile: string;
     modelName: string;
     stream: boolean;
+    mcpServers: MCPServerConfig[];
 }
 
 const defaultConfig: Config = {
@@ -41,6 +49,13 @@ const defaultConfig: Config = {
     modelName: 'default',
     stream: true,
     tools: true,
+    mcpServers: [
+        {
+            name: 'browsermcp',
+            command: 'npx',
+            args: ['-y', '@browsermcp/mcp@latest'],
+        },
+    ],
 };
 
 let config: Config = null;
@@ -77,3 +92,12 @@ export const getConfig = (): Config => {
     }
     return config;
 };
+
+export const getMCPServers = (): MCPServerConfig[] => {
+    if (!config) {
+        init();
+    }
+    return config.mcpServers || [];
+};
+
+export type { MCPServerConfig };
