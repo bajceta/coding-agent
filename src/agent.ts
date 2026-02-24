@@ -132,6 +132,7 @@ class Agent {
         const confirm: Promise<string> = new Promise((res) => {
             this.confirmation = res;
         });
+
         const answer: string = await confirm;
         this.confirmation = null;
         const response = answer.trim().toLowerCase();
@@ -360,7 +361,7 @@ class Agent {
                     else return JSON.stringify(arg).substring(0, 80);
                 })
                 .join(' ');
-            this.print(`\x1b[32mTOOL: ${toolName} ${showArgs} \x1b[0m\n`);
+            //this.print(`\x1b[32mTOOL: ${toolName} ${showArgs} \x1b[0m\n`);
 
             // Check if tool execution is allowed in current mode
             const allowedInMode = this.isToolAllowedInMode(toolName);
@@ -578,9 +579,11 @@ class Agent {
             ? `Command '${command}' requires ${requiredMode} mode`
             : `Tool '${toolName}' requires ${requiredMode} mode`;
 
-        this.print(`\n\x1b[33m⚝ ${description}\x1b[0m\n`);
-        this.print(`Current mode: ${currentMode}\n`);
-        this.print(`Switch to ${requiredMode} mode? (y/n): `);
+        //this.print(`\n\x1b[33m⚝ ${description}\x1b[0m\n`);
+        //this.print(`Current mode: ${currentMode}\n`);
+        //this.print(`Switch to ${requiredMode} mode? (y/n): `);
+
+        this.window.setPrompt(`${description}. Allow? (y/n): `);
 
         const confirm: Promise<string> = new Promise((res) => {
             this.confirmation = res;
