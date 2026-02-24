@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { validatePath } from '../utils/validatePath.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 
 async function execute(
@@ -15,17 +16,15 @@ async function execute(
     },
 ): Promise<ExecuteResult> {
     try {
-        const cwd = process.cwd();
-        const resolvedPath = path.resolve(_path);
-
-        // Check if path is within current working directory
-        if (!resolvedPath.startsWith(cwd + path.sep) && resolvedPath !== cwd) {
+        const pathValidation = validatePath(_path);
+        if ('error' in pathValidation) {
             return {
                 success: false,
                 content: null,
-                error: 'Path must be within the current working directory',
+                error: pathValidation.error,
             };
         }
+        const resolvedPath = pathValidation.resolvedPath;
 
         const content = await fs.promises.readFile(resolvedPath, 'utf8');
 
