@@ -63,6 +63,12 @@ class Agent {
         eventBus.on('stop_request', () => {
             this.stopRequest();
         });
+        eventBus.on('confirm', (answer: string) => {
+            if (this.confirmation) {
+                this.confirmation(answer);
+                this.confirmation = null;
+            }
+        });
     }
 
     /**
@@ -349,12 +355,21 @@ class Agent {
                     log.debug(
                         `Command '${command}' is ${cmdMode} mode, not allowed in ${this.config.executionMode} mode.`,
                     );
-                    return `Command '${command}' (${cmdMode} mode) not allowed in ${this.config.executionMode} mode. Use 'y' to switch modes.`;
+                    // Ask for confirmation instead of rejecting
+                    const confirmed = await this.askForModeSwitch(toolName, cmdMode, command);
+                    if (!confirmed) {
+                        return `Command '${command}' (${cmdMode} mode) not allowed in ${this.config.executionMode} mode.`;
+                    }
                 }
             } else {
                 if (!allowedInMode) {
+                    const toolMode = this.getToolMode(toolName);
                     log.debug(`Tool ${toolName} not allowed in ${this.config.executionMode} mode.`);
-                    return `Tool ${toolName} not allowed in ${this.config.executionMode} mode.`;
+                    // Ask for confirmation instead of rejecting
+                    const confirmed = await this.askForModeSwitch(toolName, toolMode);
+                    if (!confirmed) {
+                        return `Tool ${toolName} not allowed in ${this.config.executionMode} mode.`;
+                    }
                 }
             }
 
@@ -462,6 +477,18 @@ class Agent {
     }
 
     /**
+     * Get the mode description for display to the user
+     */
+    private getModeDescription(mode: 'read' | 'write' | 'run'): string {
+        const descriptions = {
+            read: 'read mode, no files can be modified, ask user to move to write or run mode',
+            write: 'write mode, files can be modified but commands cannot be run, ask user to move to run mode for command execution',
+            run: 'run mode, all operations allowed including command execution',
+        };
+        return descriptions[mode];
+    }
+
+    /**
      * Check if a tool is allowed in the current execution mode
      */
     isToolAllowedInMode(toolName: string): boolean {
@@ -497,6 +524,59 @@ class Agent {
     }
 
     /**
+     * Get the mode required for a tool
+     */
+    getToolMode(toolName: string): 'read' | 'write' | 'run' {
+        const readTools = ['readFile', 'findFiles', 'findText', 'lsp', 'browser'];
+        const writeTools = ['writeFile', 'replace', 'applyPatch'];
+        const runTools = ['runCommand'];
+
+        if (readTools.includes(toolName)) return 'read';
+        if (writeTools.includes(toolName)) return 'write';
+        if (runTools.includes(toolName)) return 'run';
+        return 'run'; // Default to run for unknown tools
+    }
+
+    /**
+     * Ask for confirmation when a tool/command requires a higher mode
+     */
+    async askForModeSwitch(
+        toolName: string,
+        requiredMode: string,
+        command?: string,
+    ): Promise<boolean> {
+        const currentMode = this.config.executionMode;
+        const modeHierarchy = ['read', 'write', 'run'];
+        const currentIndex = modeHierarchy.indexOf(currentMode);
+        const requiredIndex = modeHierarchy.indexOf(requiredMode);
+
+        // Only ask if the current mode is lower than required
+        if (currentIndex >= requiredIndex) {
+            return true;
+        }
+
+        const description = command
+            ? `Command '${command}' requires ${requiredMode} mode`
+            : `Tool '${toolName}' requires ${requiredMode} mode`;
+
+        this.print(`\n\x1b[33m⚝ ${description}\x1b[0m\n`);
+        this.print(`Current mode: ${currentMode}\n`);
+        this.print(`Switch to ${requiredMode} mode? (y/n): `);
+
+        const confirm: Promise<string> = new Promise((res) => {
+            this.confirmation = res;
+        });
+
+        try {
+            const answer: string = await confirm;
+            const response = answer.trim().toLowerCase();
+            return response === 'y' || response === 'yes';
+        } finally {
+            this.confirmation = null;
+        }
+    }
+
+    /**
      * Check if a command is allowed in the current execution mode
      * This provides fine-grained control within runCommand tool
      */
@@ -528,7 +608,7 @@ class Agent {
         this.window.statusBar.updateState({
             executionMode: mode,
         });
-        this.print(`\n✓ Execution mode set to: ${mode}\n`);
+        this.showUserPrompt();
     }
 
     /**

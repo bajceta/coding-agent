@@ -106,9 +106,21 @@ export class TerminalInputHandler {
                     return;
                 }
 
-                if (chunk === 'y') {
+                if (chunk === 'r') {
                     // Toggle through modes: read -> write -> run -> read
                     eventBus.emit('toggleMode');
+                    return;
+                }
+
+                if (chunk === 'y') {
+                    // Confirm prompt affirmatively
+                    eventBus.emit('confirm', 'y');
+                    return;
+                }
+
+                if (chunk === 'n') {
+                    // Confirm prompt negatively
+                    eventBus.emit('confirm', 'n');
                     return;
                 }
 
