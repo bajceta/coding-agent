@@ -72,7 +72,7 @@ class Window {
     }
 
     setPrompt(text: string): void {
-        this.prompt = text;
+        this.prompt = `${GREEN}${text}${RESET}`;
         this.render();
     }
 
