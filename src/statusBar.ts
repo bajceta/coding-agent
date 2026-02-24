@@ -1,6 +1,12 @@
 import { getConfig } from './config.ts'; // Import config singleton
 import eventBus from './eventBus.ts';
 
+// Navigation mode type (vim-like: normal for command mode, insert for editing)
+export type NavigationMode = 'normal' | 'insert';
+
+// Execution mode type (read/write/run for file access)
+export type ExecutionMode = 'read' | 'write' | 'run';
+
 interface StatusBarState {
     promptTokens: number;
     completionTokens?: number;
@@ -12,8 +18,8 @@ interface StatusBarState {
     currentlyRunningTool: string | null;
     model: string | null;
     status: string;
-    yoloMode: boolean;
-    mode: string;
+    executionMode: ExecutionMode;
+    navigationMode: NavigationMode;
 }
 
 interface UpdateCallback {
@@ -22,15 +28,14 @@ interface UpdateCallback {
 
 /**
  * ANSI color codes for text formatting
- * These are used to add color to the status bar text
  */
 const RESET = '\x1b[0m';
-const GREEN = '\x1b[32m'; // Green for tokens count
-const BLUE = '\x1b[34m'; // Blue for tokens per second (TPS)
-const YELLOW = '\x1b[33m'; // Yellow for currently running tools
-const CYAN = '\x1b[36m'; // Cyan for model information
-const RED = '\x1b[31m'; // Red for error messages
-const MAGENTA = '\x1b[35m'; // Magenta for other status messages
+const GREEN = '\x1b[32m';
+const BLUE = '\x1b[34m';
+const YELLOW = '\x1b[33m';
+const CYAN = '\x1b[36m';
+const RED = '\x1b[31m';
+const MAGENTA = '\x1b[35m';
 
 class StatusBar {
     state: StatusBarState;
@@ -50,59 +55,57 @@ class StatusBar {
             currentlyRunningTool: null,
             model: null,
             status: 'Ready',
-            mode: 'normal',
-            yoloMode: false, // Initialize YOLO mode as false
+            executionMode: 'read',
+            navigationMode: 'normal',
         };
         const config = getConfig();
-        this.state.yoloMode = config.yoloMode;
+        this.state.executionMode = config.executionMode;
         this.lastUpdate = Date.now();
         this.tokenCount = 0;
         this.onUpdate = onUpdate;
         this.onUpdate(this.getText());
-        eventBus.on('mode', (mode) => {
-            this.state.mode = mode;
+
+        // Listen for execution mode changes (read/write/run)
+        eventBus.on('mode', (mode: ExecutionMode) => {
+            this.state.executionMode = mode;
             this.onUpdate(this.getText());
         });
+
+        // Listen for navigation mode changes (normal/insert)
+        eventBus.on('navigation_mode', (mode: NavigationMode) => {
+            this.state.navigationMode = mode;
+            this.onUpdate(this.getText());
+        });
+
         eventBus.on('update_status_bar', (args) => this.updateState(args));
     }
 
-    // Set currently running tool
     setTool(toolName: string): void {
         this.state.currentlyRunningTool = toolName;
     }
 
-    // Clear tool status
     clearTool(): void {
         this.state.currentlyRunningTool = null;
     }
 
-    // Set general status message
     setStatus(status: string): void {
         this.state.status = status;
     }
 
-    // Update state with info object
+    setNavigationMode(mode: NavigationMode): void {
+        this.state.navigationMode = mode;
+        this.onUpdate(this.getText());
+    }
+
     updateState(info: Partial<StatusBarState>): void {
-        // Copy all properties from info to this.state
         for (const key in info) {
             if (info.hasOwnProperty(key)) {
                 this.state[key] = info[key];
             }
         }
-        // Trigger update if needed
         this.onUpdate(this.getText());
     }
 
-    /**
-     * Get formatted status text with colors
-     *
-     * This method formats the status bar text with appropriate colors:
-     * - Tokens count: Green
-     * - Tokens per second (TPS): Blue
-     * - Currently running tool: Yellow
-     * - Model name: Cyan
-     * - Status message: Color-coded based on type (Red for errors, Green for success, Yellow for warnings, Magenta for other)
-     */
     getText(): string {
         const {
             promptTokens,
@@ -113,41 +116,35 @@ class StatusBar {
             currentlyRunningTool,
             model,
             status,
-            yoloMode,
-            mode,
+            executionMode,
+            navigationMode,
         } = this.state;
 
         let text = '';
 
-        text += `${BLUE}${mode}${RESET} `;
-        // YOLO mode status - magenta for mode status
-        if (yoloMode !== undefined) {
-            if (yoloMode) {
-                text += `${RED}YOLO${RESET}`;
-            } else {
-                text += `${GREEN}SAFE${RESET}`;
-            }
-        }
+        // Show BOTH modes: execution mode (blue) | navigation mode (magenta)
+        text += `${BLUE}${executionMode.toUpperCase()}${RESET}`;
+        text += ` | ${MAGENTA}${navigationMode.toUpperCase()}${RESET} `;
 
-        // Tokens count - green for positive values
+        // Tokens count
         text += `| ${GREEN}Tokens: ${promptTokens}(P) ${promptCachedTokens}(C) ${totalTokens}(T)${RESET}`;
 
-        // Tokens per second - blue for performance metrics
+        // Tokens per second
         if (tokensPerSecond > 0) {
             text += ` | ${BLUE}TPS: ${tokensPerSecond.toFixed(1)}${RESET}`;
         }
 
-        // Prompt processing tokens per second - magenta for prompt processing metrics
+        // Prompt processing tokens per second
         if (promptProcessingPerSecond > 0) {
             text += ` | ${MAGENTA}PPS: ${promptProcessingPerSecond.toFixed(1)}${RESET}`;
         }
 
-        // Currently running tool - yellow for important information
+        // Currently running tool
         if (currentlyRunningTool) {
             text += ` | ${YELLOW}Tool: ${currentlyRunningTool}${RESET}`;
         }
 
-        // Status message - color based on status type
+        // Status message
         if (status) {
             if (status.includes('Error') || status.includes('error')) {
                 text += ` | ${RED}${status}${RESET}`;
@@ -160,7 +157,7 @@ class StatusBar {
             }
         }
 
-        // Model name - cyan for system information
+        // Model name
         if (model) {
             text += ` | ${CYAN}Model: ${model}${RESET}`;
         }

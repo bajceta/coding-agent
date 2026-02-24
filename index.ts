@@ -14,7 +14,8 @@ program
     .version('1.0.0')
     .option('-p, --parser <type>', 'Sets the parser type (native, plain, json)', 'native')
     .option('-L, --log-level <level>', 'Sets the log level', 'info')
-    .option('-y, --yolo', 'Enables YOLO mode (all tools allowed without confirmation)', false)
+    .option('-y, --yolo', 'Enables RUN mode (all tools allowed without confirmation)', false)
+    .option('--mode <mode>', 'Sets the execution mode (read, write, run)', 'read')
     .option('--disable-containers', 'Disables container mode', false)
     .option('--enable-containers', 'Enables container mode', false)
     .option('--no-intro', 'Disables the introductory message', false)
@@ -41,7 +42,12 @@ async function main() {
     // Map commander options to config
     config.parserType = options.parser;
     config.logLevel = options.logLevel;
-    config.yoloMode = options.yolo;
+    // Map --yolo flag to run mode for backwards compatibility
+    if (options.yolo) {
+        config.executionMode = 'run';
+    } else {
+        config.executionMode = options.mode as any;
+    }
     config.stream = options.stream;
     config.tools = options.tools;
     config.container = options.enableContainers
@@ -62,11 +68,11 @@ async function main() {
         const resolvedPath = path.resolve(filePath);
         try {
             fileinput =
-                'input file: ' +
-                filePath +
-                '\nFile start:\n' +
-                fs.readFileSync(resolvedPath, 'utf8') +
-                '\nFile end';
+                //  'input file: ' +
+                //  filePath +
+                //  '\nFile start:\n' +
+                fs.readFileSync(resolvedPath, 'utf8');
+            //  '\nFile end';
         } catch (error) {
             console.error(`Error reading file ${resolvedPath}:`, (error as Error).message);
             process.exit(1);
@@ -98,8 +104,8 @@ async function main() {
         console.log('');
     }
 
-    if (config.yoloMode) {
-        console.log('⚠️ YOLO mode enabled: All tools will be allowed without confirmation');
+    if (config.executionMode === 'run') {
+        console.log('⚠️ RUN mode enabled: All tools will be allowed without confirmation');
     }
 
     if (config.container) {

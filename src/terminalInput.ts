@@ -33,7 +33,7 @@ export class TerminalInputHandler {
 
     setMode(mode: 'normal' | 'insert') {
         this.mode = mode;
-        eventBus.emit('mode', mode);
+        eventBus.emit('navigation_mode', mode);
         eventBus.emit('selector', []);
     }
 
@@ -107,7 +107,8 @@ export class TerminalInputHandler {
                 }
 
                 if (chunk === 'y') {
-                    eventBus.emit('yoloMode');
+                    // Toggle through modes: read -> write -> run -> read
+                    eventBus.emit('toggleMode');
                     return;
                 }
 
@@ -215,9 +216,9 @@ export class TerminalInputHandler {
                     return;
                 }
 
-                // Handle Ctrl+Y key (ASCII 25)
+                // Handle Ctrl+Y key (ASCII 25) - toggle mode
                 if (code === 25) {
-                    eventBus.emit('yoloMode');
+                    eventBus.emit('toggleMode');
                     return;
                 }
 

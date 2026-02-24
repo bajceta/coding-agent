@@ -17,6 +17,12 @@ Tool calling works with Qwen3, it's naive, but uses few tokens.
 node index.js
 ```
 
+Press 'y' in the terminal to toggle through execution modes:
+
+- **READ mode** (default): Only read-only tools like readFile, findFiles, findText
+- **WRITE mode**: Read tools + write operations like writeFile and replace
+- **RUN mode**: All tools including runCommand for system commands
+
 ## Command Line Interface
 
 ```

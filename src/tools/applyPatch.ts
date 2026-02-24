@@ -4,6 +4,7 @@ import { validatePath } from '../utils/validatePath.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 
 async function execute(_path: string, patch: string): Promise<ExecuteResult> {
+    const cwd = process.cwd();
     try {
         const pathValidation = validatePath(_path);
         if ('error' in pathValidation) {

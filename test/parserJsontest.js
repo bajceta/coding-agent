@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { parseToolCalls, extractToolCallRaw, setTools } = require('../parser-json');
+const { parseToolCalls, extractToolCallRaw, setTools } = require('../src/parser-json');
 
 const tools = {
     readFile: {

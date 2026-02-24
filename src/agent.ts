@@ -13,6 +13,7 @@ import eventBus from './eventBus.ts';
 import { ImageHandler } from './image-handler.ts';
 import { FileHandler } from './file-handler.ts';
 import { ModelManager } from './model-manager.ts';
+import { evaluateCommandMode } from './evaluateCommand.ts';
 
 const log = Log.get('agent');
 
@@ -41,8 +42,8 @@ class Agent {
     }
 
     private setupEventHandlers(): void {
-        eventBus.on('yoloMode', () => {
-            this.toggleYoloMode();
+        eventBus.on('toggleMode', () => {
+            this.toggleMode();
         });
         eventBus.on('list_models', () => {
             this.handleListModels();
@@ -299,7 +300,7 @@ class Agent {
      * Handles the list_models event to show all available models
      */
     async handleListModels(): Promise<void> {
-        await this.modelManager.handleListModels();
+        await this.modelManager.handleListModels(false);
         this.print(`\nCurrent model: ${this.llm.modelConfig.name} \n`);
     }
 
@@ -337,12 +338,23 @@ class Agent {
                 .join(' ');
             this.print(`\x1b[32mTOOL: ${toolName} ${showArgs} \x1b[0m\n`);
 
-            // Check for confirmation
-            if (!(this.config.yoloMode || tool.safe)) {
-                const confirm = await this.askForConfirmation(toolName, args);
-                if (!confirm) {
-                    log.debug('Operation cancelled by user.');
-                    return `Tool ${toolName} rejected by user.`;
+            // Check if tool execution is allowed in current mode
+            const allowedInMode = this.isToolAllowedInMode(toolName);
+
+            // For runCommand, do additional command-level validation
+            if (toolName === 'runCommand') {
+                const command = args.command || args[0] || '';
+                if (!this.isCommandAllowedInMode(command)) {
+                    const cmdMode = this.evaluateCommandMode(command);
+                    log.debug(
+                        `Command '${command}' is ${cmdMode} mode, not allowed in ${this.config.executionMode} mode.`,
+                    );
+                    return `Command '${command}' (${cmdMode} mode) not allowed in ${this.config.executionMode} mode. Use 'y' to switch modes.`;
+                }
+            } else {
+                if (!allowedInMode) {
+                    log.debug(`Tool ${toolName} not allowed in ${this.config.executionMode} mode.`);
+                    return `Tool ${toolName} not allowed in ${this.config.executionMode} mode.`;
                 }
             }
 
@@ -438,15 +450,92 @@ class Agent {
     }
 
     /**
-     * Toggle YOLO mode on/off and update status bar
+     * Toggle through execution modes: read -> write -> run -> read
      */
-    toggleYoloMode() {
-        this.config.yoloMode = !this.config.yoloMode;
+    toggleMode(): void {
+        const modes: ('read' | 'write' | 'run')[] = ['read', 'write', 'run'];
+        const currentIndex = modes.indexOf(this.config.executionMode);
+        const nextIndex = (currentIndex + 1) % 3;
+        const nextMode = modes[nextIndex];
 
-        // Update the status bar text to show current mode
+        this.setExecutionMode(nextMode);
+    }
+
+    /**
+     * Check if a tool is allowed in the current execution mode
+     */
+    isToolAllowedInMode(toolName: string): boolean {
+        const mode = this.config.executionMode;
+
+        // Define which tools are allowed in each mode
+        const readTools = ['readFile', 'findFiles', 'findText', 'lsp', 'browser'];
+        const writeTools = ['writeFile', 'replace', 'applyPatch'];
+        const runTools = ['runCommand'];
+
+        switch (mode) {
+            case 'read':
+                return readTools.includes(toolName);
+            case 'write':
+                return readTools.includes(toolName) || writeTools.includes(toolName);
+            case 'run':
+                return (
+                    readTools.includes(toolName) ||
+                    writeTools.includes(toolName) ||
+                    runTools.includes(toolName)
+                );
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Check if a tool is a write operation
+     */
+    isWriteTool(toolName: string): boolean {
+        const writeTools = ['writeFile', 'replace', 'applyPatch'];
+        return writeTools.includes(toolName);
+    }
+
+    /**
+     * Check if a command is allowed in the current execution mode
+     * This provides fine-grained control within runCommand tool
+     */
+    isCommandAllowedInMode(command: string): boolean {
+        const mode = this.config.executionMode;
+
+        // In read mode, only read commands are allowed
+        if (mode === 'read') {
+            const commandMode = this.evaluateCommandMode(command);
+            return commandMode === 'read';
+        }
+
+        // In write mode, only read and write commands are allowed
+        if (mode === 'write') {
+            const commandMode = this.evaluateCommandMode(command);
+            return commandMode === 'read' || commandMode === 'write';
+        }
+
+        // In run mode, everything is allowed
+        return true;
+    }
+
+    /**
+     * Set execution mode
+     */
+    setExecutionMode(mode: 'read' | 'write' | 'run'): void {
+        this.config.executionMode = mode;
+        eventBus.emit('mode', mode);
         this.window.statusBar.updateState({
-            yoloMode: this.config.yoloMode,
+            executionMode: mode,
         });
+        this.print(`\n✓ Execution mode set to: ${mode}\n`);
+    }
+
+    /**
+     * Get current execution mode
+     */
+    getExecutionMode(): string {
+        return this.config.executionMode;
     }
 }
 

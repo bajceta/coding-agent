@@ -15,14 +15,15 @@ interface MCPServerConfig {
     env?: Record<string, string>;
 }
 
+export type ExecutionMode = 'read' | 'write' | 'run';
+
 export interface Config {
     tools: any;
     logLevel: string;
-    yoloMode: boolean;
+    executionMode: ExecutionMode;
     models: ModelConfig[];
     container: boolean;
     parserType: string;
-    safeTools: string[];
     logFile: string;
     rulesFile: string;
     modelName: string;
@@ -42,8 +43,7 @@ const defaultConfig: Config = {
     ],
     container: false,
     parserType: 'native',
-    yoloMode: false,
-    safeTools: ['readFile'],
+    executionMode: 'read',
     logFile: '',
     rulesFile: '',
     modelName: 'default',
