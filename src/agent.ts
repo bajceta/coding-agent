@@ -28,6 +28,7 @@ class Agent {
     fileHandler: FileHandler;
     modelManager: ModelManager;
     confirmation: (text: string) => void | null = null;
+    private modeChanged: boolean = true;
 
     constructor(config: Config) {
         this.config = config;
@@ -157,6 +158,23 @@ class Agent {
                 },
             ];
             this.imageHandler.clearLoadedImage();
+        }
+
+        // Append mode description to first prompt or after mode change
+        if (this.modeChanged) {
+            const modeDescription = this.getModeDescription(this.config.executionMode);
+            const modePrefix = `[Mode: ${modeDescription}] `;
+
+            if (loadedImage) {
+                // Prepend to the text part of the image content
+                if (Array.isArray(content)) {
+                    content = [{ type: 'text', text: modePrefix + input }, content[1]];
+                }
+            } else {
+                content = modePrefix + content;
+            }
+
+            this.modeChanged = false;
         }
 
         this.messages.push({
@@ -351,7 +369,7 @@ class Agent {
             if (toolName === 'runCommand') {
                 const command = args.command || args[0] || '';
                 if (!this.isCommandAllowedInMode(command)) {
-                    const cmdMode = this.evaluateCommandMode(command);
+                    const cmdMode = evaluateCommandMode(command);
                     log.debug(
                         `Command '${command}' is ${cmdMode} mode, not allowed in ${this.config.executionMode} mode.`,
                     );
@@ -474,6 +492,7 @@ class Agent {
         const nextMode = modes[nextIndex];
 
         this.setExecutionMode(nextMode);
+        this.modeChanged = true;
     }
 
     /**
@@ -585,13 +604,13 @@ class Agent {
 
         // In read mode, only read commands are allowed
         if (mode === 'read') {
-            const commandMode = this.evaluateCommandMode(command);
+            const commandMode = evaluateCommandMode(command);
             return commandMode === 'read';
         }
 
         // In write mode, only read and write commands are allowed
         if (mode === 'write') {
-            const commandMode = this.evaluateCommandMode(command);
+            const commandMode = evaluateCommandMode(command);
             return commandMode === 'read' || commandMode === 'write';
         }
 
