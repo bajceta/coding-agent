@@ -22,14 +22,18 @@ if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$1" != "--yes-i-am-sure" ]]; then
     fi
 fi
 
-REST=${@:1}
+# Handle --yes-i-am-sure flag - it's for the script, not passed to the agent
+AGENT_args=()
 if [[ "$1" == "--yes-i-am-sure" ]]; then
     echo "WARNING WARNING WARNING YOLO MODE, NO QUESTIONS ASKED FOR TOOL CALLS"
-    REST=${@:2}
+    # Skip the --yes-i-am-sure flag and pass the rest
+    AGENT_args=("${@:2}")
+else
+    AGENT_args=("${@}")
 fi
 
 echo "using args:"
-echo $REST
+echo "${AGENT_args[@]}"
 # Run the docker command
 docker run -it --rm \
     -v $SCRIPT_DIR:/agent \
@@ -38,4 +42,4 @@ docker run -it --rm \
     -v $PWD:/workspace \
     -v $HOME/agent_work:/workspace/agent \
     -w /workspace \
-    agent-runner:2 /agent/index.ts --yolo --disable-containers --no-intro $REST
+    agent-runner:2 /agent/index.ts --yolo --disable-containers --no-intro "${AGENT_args[@]}"
