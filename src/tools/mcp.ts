@@ -373,7 +373,7 @@ Example params for init:
         { params: 'JSON string of parameters for the action' },
     ],
     execute: mcpExecute,
-    enabled: true,
+    enabled: false,
     safe: false,
 };
 
@@ -398,4 +398,4 @@ async function autoInitMCPServers() {
     }
 }
 
-autoInitMCPServers();
+//autoInitMCPServers();
