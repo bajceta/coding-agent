@@ -13,6 +13,7 @@ interface RunningProcess {
     processId: string;
     toolCallId: string;
     messages: Message[];
+    startTime: number;
 }
 
 // Keep track of running processes
@@ -31,7 +32,7 @@ function killProcess(processId: string) {
 }
 
 // Function to send output to LLM
-function sendOutputToLLM(processId: string) {
+function sendOutputToLLM(processId: string, includeContent: boolean = true) {
     const proc = runningProcesses[processId];
     if (!proc || !proc.outputBuffer) return;
 
@@ -43,7 +44,9 @@ function sendOutputToLLM(processId: string) {
         role: 'tool',
         content: JSON.stringify({
             success: true,
-            content: `Process ${processId} output:\n${output}`,
+            content: includeContent
+                ? `Process ${processId} output:\n${output}`
+                : `Process ${processId} running. Use readData('${processId}') to get the output so far.`,
             error: null,
         }),
         tool_call_id: proc.toolCallId,
@@ -53,63 +56,6 @@ function sendOutputToLLM(processId: string) {
     log.info(`Sent output update for process ${processId}: ${output.substring(0, 100)}...`);
 
     eventBus.emit('render');
-}
-
-// Function to handle process output
-function handleProcessOutput(processId: string, spawnedProcess: any) {
-    const proc = runningProcesses[processId];
-    if (!proc) return;
-
-    proc.outputBuffer = '';
-    proc.lastSendTime = Date.now();
-
-    // Handle stdout
-    spawnedProcess.stdout.on('data', (data: string) => {
-        proc.outputBuffer += data;
-        // Check if we need to send output to LLM
-        if (Date.now() - proc.lastSendTime >= 5000) {
-            sendOutputToLLM(processId);
-        }
-    });
-
-    // Handle stderr
-    spawnedProcess.stderr.on('data', (data: string) => {
-        proc.outputBuffer += data;
-        // Check if we need to send output to LLM
-        if (Date.now() - proc.lastSendTime >= 5000) {
-            sendOutputToLLM(processId);
-        }
-    });
-
-    // Handle process exit
-    spawnedProcess.on('exit', (code: number, signal: string) => {
-        // Send any remaining output
-        if (proc.outputBuffer) {
-            sendOutputToLLM(processId);
-        }
-
-        // Clean up
-        if (proc.timer) {
-            clearTimeout(proc.timer);
-        }
-        delete runningProcesses[processId];
-        log.info(`Process ${processId} exited with code ${code} and signal ${signal}`);
-    });
-
-    // Handle process error
-    spawnedProcess.on('error', (error: Error) => {
-        // Send any remaining output
-        if (proc.outputBuffer) {
-            sendOutputToLLM(processId);
-        }
-
-        // Clean up
-        if (proc.timer) {
-            clearTimeout(proc.timer);
-        }
-        delete runningProcesses[processId];
-        log.error(`Process ${processId} error: ${error.message}`);
-    });
 }
 
 // Store for current execution context
@@ -138,17 +84,19 @@ async function startProcess(
     // Create process
     let spawnedProcess: any;
 
+    const spawnOptions = { shell: '/bin/bash', encoding: 'utf8' as const, ...options };
+
     if (getConfig()?.container) {
         log.debug('Run in docker: ' + command);
         const dockerCommand = `docker run --rm -v ${cwd}:/workspace -w /workspace agent-runner:1 bash -c '${command}'`;
-        spawnedProcess = spawn(dockerCommand, { shell: '/bin/bash', ...options });
+        spawnedProcess = spawn(dockerCommand, spawnOptions);
     } else {
         log.debug('Run in bash: ' + command);
-        spawnedProcess = spawn(command, { shell: '/bin/bash', ...options });
+        spawnedProcess = spawn(command, spawnOptions);
     }
 
     // Store process in running processes with execution context
-    runningProcesses[processId] = {
+    const processEntry: RunningProcess = {
         process: spawnedProcess,
         timer: null,
         outputBuffer: '',
@@ -156,28 +104,96 @@ async function startProcess(
         processId,
         toolCallId: currentToolCallId,
         messages: currentMessages,
+        startTime: Date.now(),
     };
+    runningProcesses[processId] = processEntry;
 
-    // Handle output
-    handleProcessOutput(processId, spawnedProcess);
+    // Attach stdout/stderr listeners immediately to capture all output
+    spawnedProcess.stdout.on('data', (data: string) => {
+        processEntry.outputBuffer += data;
+    });
 
-    // Send initial output
-    sendOutputToLLM(processId);
+    spawnedProcess.stderr.on('data', (data: string) => {
+        processEntry.outputBuffer += data;
+    });
 
-    // Set up timer to send output every 5 seconds
+    // Set up timer to send periodic updates every 1 second for long-running processes
     const timer = setInterval(() => {
         if (runningProcesses[processId]) {
-            sendOutputToLLM(processId);
+            sendOutputToLLM(processId, false);
         }
-    }, 5000);
-
-    // Store the timer
+    }, 1000);
     runningProcesses[processId].timer = timer;
 
-    // Return initial result
+    return new Promise((resolve) => {
+        // Timer to handle long-running processes - send process ID after 1 second if not done
+        const timeoutTimer = setTimeout(() => {
+            if (runningProcesses[processId]) {
+                const buf = runningProcesses[processId].outputBuffer;
+                resolve({
+                    success: true,
+                    content: buf
+                        ? `Process ${processId} still running. Output so far:\n${buf}\n\nUse readData('${processId}') to get more output.`
+                        : `Process ID: ${processId}`,
+                    error: null,
+                });
+            }
+        }, 1000);
+
+        // Listen for process exit - resolve immediately with output if completed
+        spawnedProcess.on('exit', (code: number, signal: string) => {
+            // Also wait for stdout/stderr to close to ensure we have all output
+            spawnedProcess.stdout.removeAllListeners('data');
+            spawnedProcess.stderr.removeAllListeners('data');
+
+            clearTimeout(timeoutTimer);
+
+            const buf = runningProcesses[processId]?.outputBuffer || '';
+            delete runningProcesses[processId];
+
+            resolve({
+                success: true,
+                content: buf,
+                error: null,
+            });
+        });
+
+        // Also listen for close event as fallback
+        spawnedProcess.on('close', (code: number, signal: string) => {
+            if (runningProcesses[processId]) {
+                spawnedProcess.stdout.removeAllListeners('data');
+                spawnedProcess.stderr.removeAllListeners('data');
+
+                clearTimeout(timeoutTimer);
+
+                const buf = runningProcesses[processId]?.outputBuffer || '';
+                delete runningProcesses[processId];
+
+                resolve({
+                    success: true,
+                    content: buf,
+                    error: null,
+                });
+            }
+        });
+    });
+}
+
+// Function to read data from a running process
+async function readData(processId: string): Promise<ExecuteResult> {
+    const proc = runningProcesses[processId];
+
+    if (!proc) {
+        return {
+            success: false,
+            content: `Process ${processId} not found`,
+            error: null,
+        };
+    }
+
     return {
         success: true,
-        content: `Command started: ${command}. Process ID: ${processId}. Output will be sent every 5 seconds. Use killProcess('${processId}') to stop it.`,
+        content: `Process ${processId} output:\n${proc.outputBuffer || ''}`,
         error: null,
     };
 }
@@ -212,7 +228,10 @@ async function killProcessById(processId: string): Promise<ExecuteResult> {
 
 // Export module
 export default {
-    description: `Run a bash command and stream output back to LLM every 5 seconds.
+    description: `Run a bash command and stream output back to LLM.
+    If command completes within 1 second, returns output immediately.
+    If command runs longer than 1 second, returns process ID only.
+    LLM can then use readData('processId') to get output so far.
     Replace shorter texts in files with 'sed -i' instead of writeFile tool.
     Find text in files using 'ag'.
     Always ignore node_modules and .git folders.
@@ -224,4 +243,6 @@ export default {
     safe: false,
     // Add a new tool for killing processes
     killProcess: killProcessById,
+    // Add a tool for reading process data
+    readData: readData,
 };
