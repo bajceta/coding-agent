@@ -26,6 +26,7 @@ export interface Message {
     tool_calls?: OpenaiRawToolCall[];
     reasoning?: boolean;
     reasoning_content?: string;
+    tool_call_id?: string;
 }
 
 export interface LLMResponse {
