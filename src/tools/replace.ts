@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 import { validatePath } from '../utils/validatePath.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 

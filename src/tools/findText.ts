@@ -1,6 +1,8 @@
 import runCommand from './runCommand.ts';
 import type { ExecuteResult } from '../interfaces.ts';
 
+const MAX_OUTPUT_LENGTH = 1000;
+
 async function execute(text: string, path: string, fileType?: string): Promise<ExecuteResult> {
     if (!path) {
         path = '.';
@@ -11,7 +13,22 @@ async function execute(text: string, path: string, fileType?: string): Promise<E
         command += ` -t '${fileType}'`;
     }
 
-    return await runCommand.execute(command);
+    const result = await runCommand.execute(command);
+
+    if (result.success && result.content) {
+        if (result.content.length > MAX_OUTPUT_LENGTH) {
+            const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
+            const lastNewline = truncated.lastIndexOf('\n');
+            const cutPoint = lastNewline > -1 ? lastNewline : MAX_OUTPUT_LENGTH;
+            result.content =
+                result.content.substring(0, cutPoint) +
+                '\n\n[... output truncated - ' +
+                (result.content.length - cutPoint) +
+                ' more characters]';
+        }
+    }
+
+    return result;
 }
 
 // Export module

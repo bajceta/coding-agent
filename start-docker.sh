@@ -37,6 +37,7 @@ echo "${AGENT_args[@]}"
 # Run the docker command
 docker run -it --rm \
     -v $SCRIPT_DIR:/agent \
+    --dns 192.168.3.254 \
     -v $HOME/.config/codingagent.json:/home/node/.config/codingagent.json \
     --user $(id -u):$(id -g) \
     -v $PWD:/workspace \

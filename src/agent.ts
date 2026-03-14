@@ -14,6 +14,7 @@ import { ImageHandler } from './image-handler.ts';
 import { FileHandler } from './file-handler.ts';
 import { ModelManager } from './model-manager.ts';
 import { evaluateCommandMode } from './evaluateCommand.ts';
+import dns from 'node:dns';
 
 const log = Log.get('agent');
 
@@ -107,6 +108,8 @@ class Agent {
             this.tools = tools;
         }
         log.info(`Loaded ${Object.keys(this.tools).length} tools`);
+
+        log.info(`DNS servers: ${dns.getServers().join(', ')}`);
     }
 
     /**
@@ -199,11 +202,11 @@ class Agent {
      * Each handler takes the input string and returns void.
      */
     private commandHandlers: Record<string, (input: string) => void> = {
-        '/msgs': (input) => {
+        '/msgs': (_input) => {
             this.messages.forEach((msg) => log.info(JSON.stringify(msg, null, 4)));
             this.showUserPrompt();
         },
-        '/pop': (input) => {
+        '/pop': (_input) => {
             if (this.messages.length > 0) {
                 this.messages.pop();
             } else {
@@ -355,12 +358,7 @@ class Agent {
             }
 
             // Log tool call
-            const showArgs = Object.values(args)
-                .map((arg) => {
-                    if (typeof arg === 'string') return arg?.substring(0, 80);
-                    else return JSON.stringify(arg).substring(0, 80);
-                })
-                .join(' ');
+
             //this.print(`\x1b[32mTOOL: ${toolName} ${showArgs} \x1b[0m\n`);
 
             // Check if tool execution is allowed in current mode
@@ -397,6 +395,19 @@ class Agent {
             const argsList: string[] = Object.values(args);
             this.window.setPrompt('Executing tool: ' + toolName);
             const result: ExecuteResult = await tool.execute(...argsList);
+
+            const MAX_OUTPUT_LENGTH = 2000;
+            if (result.content.length > MAX_OUTPUT_LENGTH) {
+                const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
+                const lastNewline = truncated.lastIndexOf('\n');
+                const cutPoint = lastNewline > -1 ? lastNewline : MAX_OUTPUT_LENGTH;
+                result.content =
+                    result.content.substring(0, cutPoint) +
+                    '\n\n[... output truncated - ' +
+                    (result.content.length - cutPoint) +
+                    ' more characters]';
+            }
+
             return JSON.stringify(result);
         } catch (error) {
             this.handleError(`Error executing tool ${toolcall.name} `, error);

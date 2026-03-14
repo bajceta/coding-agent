@@ -58,7 +58,7 @@ class LLM {
         const requestBody = {
             model: this.modelConfig.model,
             messages: messages,
-            //temperature: 0.1,
+            temperature: 0.4,
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
             parallel_tool_calls: true,
@@ -136,7 +136,12 @@ class LLM {
                         }
                     });
                     res.on('end', () => {
-                        if (error) return;
+                        if (error) {
+                            this.currentRequest = null;
+                            reject(error);
+                            return;
+                        }
+
                         log.info('No more data in response.');
                         this.stats.end();
                         if (this.config.stream) {
@@ -205,6 +210,7 @@ class LLM {
      */
     async fetchModels(): Promise<any> {
         try {
+            log.info(`${this.modelConfig.baseUrl}/models`);
             const response = await fetch(`${this.modelConfig.baseUrl}/models`, {
                 method: 'GET',
                 headers: {
@@ -223,6 +229,9 @@ class LLM {
             log.error(
                 `Error fetching models: ${error instanceof Error ? error.message : 'Unknown error'}`,
             );
+            log.error(`${error.stack}`);
+            log.error(`${error.cause}`);
+            log.error(`${error.cause.stack}`);
             throw error;
         }
     }

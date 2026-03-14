@@ -69,7 +69,7 @@ function createMCPClient(serverConfig: MCPServerConfig): MCPClient {
                     }
                 }
             } catch (e) {
-                log.debug('Failed to parse MCP response: ' + line);
+                log.debug('Failed to parse MCP response: ' + line + ' ' + e);
             }
         });
 
@@ -377,7 +377,7 @@ Example params for init:
     safe: false,
 };
 
-async function autoInitMCPServers() {
+async function _autoInitMCPServers() {
     try {
         const servers = getMCPServers();
         if (servers && servers.length > 0) {

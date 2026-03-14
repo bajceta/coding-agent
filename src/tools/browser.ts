@@ -47,7 +47,7 @@ function initMCP(): Promise<void> {
                     }
                 }
             } catch (e) {
-                console.error('Failed to parse MCP response:', line);
+                console.error('Failed to parse MCP response:', line, e);
             }
         });
 
@@ -55,7 +55,7 @@ function initMCP(): Promise<void> {
             reject(err);
         });
 
-        mcpProcess.on('close', (code) => {
+        mcpProcess.on('close', (_code) => {
             initialized = false;
             mcpProcess = null;
         });

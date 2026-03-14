@@ -62,7 +62,8 @@ class Window {
 
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
-        const pureText = this.statusText.replace(/\x1b\[[0-9;]*m/g, '');
+        // eslint-disable-next-line no-control-regex
+        const pureText = this.statusText.replace(/[\u001b\u000c][\d;]*m/g, '');
         const escapeCodeLength = this.statusText.length - pureText.length;
 
         process.stdout.write('\x1b[s'); // Save cursor position
@@ -164,7 +165,7 @@ class Window {
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
         var bufferLine = Math.max(buffer.length - 1 - this.bufferOffset, 0);
-        console.log(bufferLine);
+        //console.log(bufferLine);
         for (let i = rows - 2; i > 0; i--) {
             if (bufferLine < 0) break;
             const line = buffer[bufferLine];
@@ -187,7 +188,7 @@ class Window {
 
     private setupEventHandlers(): void {
         eventBus.on('exit', () => {
-            console.log('Exit event received in window.ts');
+            //console.log('Exit event received in window.ts');
             for (let line of this.content()) {
                 console.log(line);
             }
