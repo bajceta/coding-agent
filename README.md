@@ -45,3 +45,7 @@ For zsh:
 echo "alias agent=\"/home/vlada/.local/share/fnm/node-versions/v24.11.1/installation/bin/node $PWD/index.ts --enable-containers --log-file /tmp/messages\"" >> ~/.zshrc
 echo "alias yolo=\"$PWD/start-docker.sh --yes-i-am-sure\"" >> ~/.zshrc
 ```
+
+html to markdown:
+
+npm install -g @kreuzberg/html-to-markdown-node

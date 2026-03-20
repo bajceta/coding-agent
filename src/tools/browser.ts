@@ -82,11 +82,8 @@ async function callMCP(method: string, params: Record<string, any> = {}): Promis
     const request = {
         jsonrpc: '2.0',
         id,
-        method: 'tools/call',
-        params: {
-            name: method,
-            arguments: params,
-        },
+        method,
+        params,
     };
 
     return new Promise((resolve, reject) => {
