@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: webfetch <url>" >&2
+    exit 1
+fi
+
+url="$1"
+
+curl -sL "$url" | html-to-markdown 

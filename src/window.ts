@@ -144,7 +144,7 @@ class Window {
             } else if (msg.role == 'tool' && msg.content) {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
                 if (this.showmore) msgs += msg.content + '\n';
-                else msgs += msg.content.slice(0, 80) + ' length:' + msg.content.length + '\n';
+                else msgs += msg.content.slice(0, 130) + ' length:' + msg.content.length + '\n';
             } else {
                 msgs += JSON.stringify(msg) + '\n';
             }

@@ -14,7 +14,6 @@ import { ImageHandler } from './image-handler.ts';
 import { FileHandler } from './file-handler.ts';
 import { ModelManager } from './model-manager.ts';
 import { evaluateCommandMode } from './evaluateCommand.ts';
-import { setExecutionContext as setRunCommandExecutionContext } from './tools/runCommand.ts';
 import dns from 'node:dns';
 
 const log = Log.get('agent');
@@ -347,7 +346,7 @@ class Agent {
         }
     }
 
-    async processToolCall(toolcall: ToolCall, messages: Message[]): Promise<string> {
+    async processToolCall(toolcall: ToolCall): Promise<string> {
         try {
             const toolName = toolcall.name;
             const args = toolcall.arguments || {};
@@ -392,12 +391,6 @@ class Agent {
             }
 
             log.debug(`TOOL: ${toolName} ${JSON.stringify(args)} `);
-
-            // Set execution context for streaming tools like runCommand
-            if (toolName === 'runCommand') {
-                setRunCommandExecutionContext(messages, toolcall.id!);
-            }
-
             // Execute tool
             const argsList: string[] = Object.values(args);
             this.window.setPrompt('Executing tool: ' + toolName);
@@ -462,13 +455,11 @@ class Agent {
                     complete = false;
                     for (const toolCall of toolCalls) {
                         this.window.statusBar.setTool(toolCall.name);
-
-                        const resultStr = await this.processToolCall(toolCall, currentMessages);
-                        const result = JSON.parse(resultStr) as ExecuteResult;
-
+                        const result = await this.processToolCall(toolCall);
                         const msg = {
                             role: 'tool',
-                            content: resultStr,
+                            name: toolCall.name,
+                            content: result,
                             tool_call_id: toolCall.id,
                         };
                         log.debug(JSON.stringify(msg));

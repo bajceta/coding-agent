@@ -58,7 +58,7 @@ class LLM {
         const requestBody = {
             model: this.modelConfig.model,
             messages: messages,
-            //temperature: 0.4,
+            temperature: 0.4,
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
             parallel_tool_calls: true,

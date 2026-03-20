@@ -3,3 +3,7 @@ RUN apk add --no-cache ripgrep the_silver_searcher git bash grep curl findutils
 RUN npm install -g @vtsls/language-server oxfmt oxlint typescript
 RUN apk add --no-cache python3 patch
 RUN apk add --no-cache php
+COPY build.sh ./
+RUN ./build.sh
+
+

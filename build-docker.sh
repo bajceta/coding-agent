@@ -1,1 +1,1 @@
-docker build -t agent-runner:1 .
+docker build -t agent-runner:2 .

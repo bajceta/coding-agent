@@ -1,3 +1,5 @@
+#!/bin/bash
+
 html_to_md() {
     local url="https://github.com/kreuzberg-dev/html-to-markdown/releases/download/v2.27.3/cli-x86_64-unknown-linux-gnu.tar.gz"
     local archive="/tmp/html-to-markdown.tar.gz"
