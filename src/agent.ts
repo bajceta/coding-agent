@@ -57,6 +57,7 @@ class Agent {
             this.processInput(text);
         });
         eventBus.on('exit', () => {
+            log.info('exit event');
             this.stopRequest();
             setTimeout(() => {
                 process.exit(0);
@@ -116,9 +117,12 @@ class Agent {
      * Handles errors consistently.
      */
     private handleError(context: string, error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        log.error(`${context}: ${errorMessage}`);
-        console.error(`${context}:`, error);
+        if (error instanceof Error) {
+            log.error(error.stack);
+            log.error(`${context}: ${error.message}`);
+        } else {
+            log.error(`${context}: ${error}`);
+        }
     }
 
     async askForConfirmation(toolName: string, args: Record<string, any>): Promise<boolean> {
@@ -308,6 +312,7 @@ class Agent {
     }
 
     async askQuestion(question: string, interactive: boolean) {
+        log.info('Ask question, interactive: ' + interactive);
         if (!question.trim()) {
             throw new Error('Question cannot be empty.');
         }
@@ -392,12 +397,19 @@ class Agent {
 
             log.debug(`TOOL: ${toolName} ${JSON.stringify(args)} `);
             // Execute tool
-            const argsList: string[] = Object.values(args);
+            const argsList = [];
+            tool.arguments.forEach((arg) => {
+                const name = Object.keys(arg)[0];
+                log.debug(name);
+                argsList.push(args[name]);
+            });
+            log.debug(JSON.stringify(argsList));
+
             this.window.setPrompt('Executing tool: ' + toolName);
             const result: ExecuteResult = await tool.execute(...argsList);
 
             const MAX_OUTPUT_LENGTH = 2000;
-            if (result.content.length > MAX_OUTPUT_LENGTH) {
+            if (result.content?.length > MAX_OUTPUT_LENGTH) {
                 const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
                 const lastNewline = truncated.lastIndexOf('\n');
                 const cutPoint = lastNewline > -1 ? lastNewline : MAX_OUTPUT_LENGTH;

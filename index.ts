@@ -22,10 +22,11 @@ program
     .option('--no-stream', 'Disables streaming api', true)
     .option('--no-tools', 'Disables tools', true)
     .option('-l, --log-file <file>', 'Sets the log file path')
-    .option('-m, --model <name>', 'Sets the model name to use or list available models')
-    .option('-it, --interactive', 'Enables interactive mode')
-    .option('-f, --file <file>', 'Reads content from a file and uses it as the question')
+    .option('-m, --model <name>', 'Sets the model name to use or list available models', 1)
+    .option('-it, --interactive', 'Enables interactive mode', false)
+    .option('-f, --files [files...]', 'Reads content from a file and uses it as the question')
     .option('-r, --rules <file>', 'Sets the rules file path')
+    .option('-q, --question <text>', 'Question')
     .argument('[question]', 'The question to ask the agent');
 
 program.parse(process.argv);
@@ -59,23 +60,25 @@ async function main() {
     config.rulesFile = options.rules;
 
     const intro = options.intro;
-    const question = args[0];
+    var question = args[0];
+    if (options.question) {
+        question = options.question;
+    } else {
+        question = args[0];
+    }
     let fileinput: string | undefined = undefined;
 
     // Handle file input
-    if (options.file) {
-        const filePath = options.file;
-        const resolvedPath = path.resolve(filePath);
-        try {
-            fileinput =
-                //  'input file: ' +
-                //  filePath +
-                //  '\nFile start:\n' +
-                fs.readFileSync(resolvedPath, 'utf8');
-            //  '\nFile end';
-        } catch (error) {
-            console.error(`Error reading file ${resolvedPath}:`, (error as Error).message);
-            process.exit(1);
+    if (options.files) {
+        for (var file of options.files) {
+            const filePath = file;
+            const resolvedPath = path.resolve(filePath);
+            try {
+                fileinput += '' + file + '= ' + fs.readFileSync(resolvedPath, 'utf8') + '\n';
+            } catch (error) {
+                console.error(`Error reading file ${resolvedPath}:`, (error as Error).message);
+                process.exit(1);
+            }
         }
     }
 

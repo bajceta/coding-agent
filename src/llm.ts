@@ -29,10 +29,9 @@ class LLM {
             reject = _reject;
         });
 
-        const toolcalls = [];
         const msg: Message = {
             role: 'assistant',
-            tool_calls: toolcalls,
+            tool_calls: [],
             content: '',
             reasoning_content: '',
         };
@@ -41,16 +40,17 @@ class LLM {
             stats: this.stats.stats,
             msg,
             done,
-            reasoning: '',
         };
 
         function processToolCallStream(stream) {
+            log.debug(JSON.stringify(stream));
             stream.forEach((part) => {
                 let current;
-                if (!toolcalls[part.index]) {
-                    toolcalls[part.index] = part;
+                log.debug(JSON.stringify(part));
+                if (!msg.tool_calls[part.index]) {
+                    msg.tool_calls[part.index] = part;
                 } else {
-                    current = toolcalls[part.index];
+                    current = msg.tool_calls[part.index];
                     current.function.arguments += part.function.arguments;
                 }
             });
@@ -94,6 +94,7 @@ class LLM {
                     //log.info(`HEADERS: ${JSON.stringify(res.headers)}`);
                     if (res.statusCode > 299) error = true;
                     res.setEncoding('utf8');
+
                     res.on('data', (value) => {
                         //log.info(`BODY: ${value}`);
                         if (this.config.stream) {
@@ -116,18 +117,20 @@ class LLM {
                                         }
                                         const content = parsed.choices[0]?.delta?.content || '';
                                         const reasoningContent =
-                                            parsed.choices[0]?.delta?.reasoning_content || '';
+                                            parsed.choices[0]?.delta?.reasoning || '';
+                                        //   parsed.choices[0]?.delta?.reasoning_content || '';
 
                                         if (content) {
                                             msg.content += content;
                                         }
-                                        if (reasoningContent.length > 0) {
+                                        if (reasoningContent) {
                                             msg.reasoning_content += reasoningContent;
-                                            result.reasoning += reasoningContent;
                                         }
                                         eventBus.emit('render');
-                                    } catch {
-                                        //log.error('Failed parsing: ' + data + ' error ' + error.message);
+                                    } catch (error) {
+                                        log.error(
+                                            'Failed parsing: ' + data + ' error ' + error.message,
+                                        );
                                     }
                                 }
                             }
@@ -135,6 +138,7 @@ class LLM {
                             raw += value;
                         }
                     });
+
                     res.on('end', () => {
                         if (error) {
                             this.currentRequest = null;
@@ -146,7 +150,7 @@ class LLM {
                         this.stats.end();
                         if (this.config.stream) {
                             //qwen3 on vllm fix
-                            toolcalls.forEach((toolcall) => {
+                            msg.tool_calls.forEach((toolcall) => {
                                 const args = toolcall.function.arguments;
                                 if (args && args[0] != '{') {
                                     const sanitizedArgs =

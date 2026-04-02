@@ -37,7 +37,7 @@ async function execute(_path: string, content: string): Promise<ExecuteResult> {
 // Export module
 export default {
     description: 'Write content to a file',
-    arguments: [{ path: 'path to the file to write' }, { content: 'content to write to the file' }],
+    arguments: [{ path: 'path' }, { content: 'content' }],
     execute,
     enabled: true,
 };

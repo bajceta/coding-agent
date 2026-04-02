@@ -31,7 +31,6 @@ export interface Message {
 export interface LLMResponse {
     stats: any;
     msg: Message;
-    reasoning?: string;
     done: Promise<boolean>;
 }
 

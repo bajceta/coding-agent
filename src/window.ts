@@ -123,6 +123,7 @@ class Window {
                 if (msg.content && msg.content.length > 0) msgs += msg.content + '\n';
                 if (msg.tool_calls) {
                     for (let call of msg.tool_calls) {
+                        //msgs += JSON.stringify(call);
                         const _args = this.showmore
                             ? call.function.arguments
                             : call.function.arguments.slice(0, 80) +
@@ -130,7 +131,7 @@ class Window {
                               call.function.arguments?.length;
                         const _lines = _args.split('\\n');
                         msgs +=
-                            'toolcall ' +
+                            'toolcall: ' +
                             call.function.name +
                             ' ' +
                             _lines.join('\n').replaceAll('\\"', '"').replaceAll('\\\\', '\\') +
@@ -141,6 +142,7 @@ class Window {
                 msgs += msg.content + '\n';
                 msgs += `${GREEN}${msg.role}: ${RESET}`;
             } else if (msg.role == 'system') {
+                msgs += msg.content + '\n';
             } else if (msg.role == 'tool' && msg.content) {
                 msgs += `${YELLOW}${msg.role}: ${RESET}`;
                 if (this.showmore) msgs += msg.content + '\n';
@@ -160,6 +162,7 @@ class Window {
     }
 
     render() {
+        if (!this.ready) return;
         process.stdout.write('\x1b[2J\x1b[H'); // Clear screen
         const buffer = this.content();
         const rows = process.stdout.rows;
@@ -188,10 +191,12 @@ class Window {
 
     private setupEventHandlers(): void {
         eventBus.on('exit', () => {
-            //console.log('Exit event received in window.ts');
+            this.ready = false;
+            console.log('Exit event received in window.ts');
             for (let line of this.content()) {
                 console.log(line);
             }
+            console.log(this.statusBar);
         });
         eventBus.on('scroll', (direction: 'up' | 'down') => {
             this.handleScroll(direction);

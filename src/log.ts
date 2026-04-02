@@ -28,6 +28,12 @@ class Log {
     }
 
     private printMessage(level: string, message: string): void {
+        var msg;
+        if (typeof value !== 'string') {
+            msg = JSON.stringify(message);
+        } else {
+            msg = message;
+        }
         let coloredLevel = level;
         switch (level) {
             case 'trace':
@@ -45,16 +51,16 @@ class Log {
             default:
                 coloredLevel = level;
         }
-        this.print(`${coloredLevel} - ${this.moduleName || 'unknown'} - ${message}\n`);
+        this.print(`${coloredLevel} - ${this.moduleName || 'unknown'} - ${msg}\n`);
     }
 
-    trace(message: string): void {
+    trace(message: any): void {
         if (this.logLevelNumber <= LOG_LEVELS['trace']) {
             this.printMessage('trace', message);
         }
     }
 
-    debug(message: string): void {
+    debug(message: any): void {
         if (this.logLevelNumber <= LOG_LEVELS['debug']) {
             this.printMessage('debug', message);
         }
