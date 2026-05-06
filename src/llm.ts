@@ -62,6 +62,7 @@ class LLM {
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
             parallel_tool_calls: true,
+            chat_template_kwargs: { preserve_thinking: 'True' },
         };
         if (this.config.stream) {
             requestBody['stream'] = true;

@@ -408,16 +408,19 @@ class Agent {
             this.window.setPrompt('Executing tool: ' + toolName);
             const result: ExecuteResult = await tool.execute(...argsList);
 
-            const MAX_OUTPUT_LENGTH = 2000;
-            if (result.content?.length > MAX_OUTPUT_LENGTH) {
-                const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
-                const lastNewline = truncated.lastIndexOf('\n');
-                const cutPoint = lastNewline > -1 ? lastNewline : MAX_OUTPUT_LENGTH;
-                result.content =
-                    result.content.substring(0, cutPoint) +
-                    '\n\n[... output truncated - ' +
-                    (result.content.length - cutPoint) +
-                    ' more characters]';
+            // Skip truncation for readFile tool to allow reading large files
+            if (toolName !== 'readFile') {
+                const MAX_OUTPUT_LENGTH = 2000;
+                if (result.content?.length > MAX_OUTPUT_LENGTH) {
+                    const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
+                    const lastNewline = truncated.lastIndexOf('\n');
+                    const cutPoint = lastNewline > -1 ? lastNewline : MAX_OUTPUT_LENGTH;
+                    result.content =
+                        result.content.substring(0, cutPoint) +
+                        '\n\n[... output truncated - ' +
+                        (result.content.length - cutPoint) +
+                        ' more characters]';
+                }
             }
 
             return JSON.stringify(result);
