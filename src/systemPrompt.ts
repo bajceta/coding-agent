@@ -17,19 +17,19 @@ Think about problems in a step by step manner before taking action.
 
     let prompt = basePrompt;
 
-    // Check for agent.md in current working directory and add to context
-    const agentMdPath = path.join(process.cwd(), 'agent.md');
-    if (fs.existsSync(agentMdPath)) {
-        const agentMdContent = fs.readFileSync(agentMdPath, 'utf8');
-        prompt += `\n# Agent Instructions\n${agentMdContent}\n`;
-    }
-
     if (toolPrompt) {
         prompt += `
 If you need information from files or system commands, use the appropriate tool.
 ${toolPrompt(tools)}
 If the user rejects a tool, ask the user why.
 `;
+    }
+
+    // Check for agent.md in current working directory and add to context
+    const agentMdPath = path.join(process.cwd(), 'agent.md');
+    if (fs.existsSync(agentMdPath)) {
+        const agentMdContent = fs.readFileSync(agentMdPath, 'utf8');
+        prompt += `\n# Agent Instructions\n${agentMdContent}\n`;
     }
 
     if (rulesFile) {

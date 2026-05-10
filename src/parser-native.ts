@@ -17,7 +17,12 @@ export class NativeParser implements Parser {
                     arguments: {},
                 };
                 if (_toolcall.function.arguments) {
-                    toolcall.arguments = JSON.parse(_toolcall.function.arguments);
+                    try {
+                        toolcall.arguments = JSON.parse(_toolcall.function.arguments);
+                    } catch (e) {
+                        _toolcall.function.arguments = '';
+                        log.error(e);
+                    }
                 } else {
                     _toolcall.function.arguments = '';
                 }
