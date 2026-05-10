@@ -469,6 +469,18 @@ class Agent {
                 currentMessages.push(response.msg);
                 await response.done;
                 this.updateStats(response.stats);
+                //qwen failed toolcall retry
+                if (typeof response.msg.content === 'string') {
+                    const text = response.msg.content as String;
+                    if (text.includes('<tool_call>')) {
+                        const msg = {
+                            role: 'user',
+                            content: 'Toll call wrong format, try again',
+                        };
+                        currentMessages.push(msg);
+                        complete = false;
+                    }
+                }
 
                 const toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
 
