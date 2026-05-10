@@ -15,6 +15,10 @@ import { FileHandler } from './file-handler.ts';
 import { ModelManager } from './model-manager.ts';
 import { evaluateCommandMode } from './evaluateCommand.ts';
 import dns from 'node:dns';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 const log = Log.get('agent');
 
@@ -468,7 +472,14 @@ class Agent {
 
                 if (toolCalls.length > 0) {
                     complete = false;
+
+                    // Check if any tool call is writeFile or replace
+                    const hasWriteOrReplace = toolCalls.some(
+                        (tc) => tc.name === 'writeFile' || tc.name === 'replace',
+                    );
+
                     for (const toolCall of toolCalls) {
+                        if (!toolCall) continue;
                         this.window.statusBar.setTool(toolCall.name);
                         const result = await this.processToolCall(toolCall);
                         const msg = {
@@ -481,6 +492,42 @@ class Agent {
                         currentMessages.push(msg);
 
                         this.window.statusBar.clearTool();
+                    }
+
+                    // If any tool was writeFile or replace, run TypeScript compilation
+                    if (hasWriteOrReplace) {
+                        try {
+                            log.debug('Running TypeScript compilation after file modifications');
+                            this.window.setPrompt('Compiling TypeScript...');
+                            const { stdout, stderr } = await execAsync(
+                                'npx --yes tsc -p tsconfig.json',
+                            );
+                            const compilationOutput =
+                                stdout || stderr || 'TypeScript compilation completed.';
+
+                            // Append compilation result to the last tool message
+                            if (currentMessages.length > 0) {
+                                const lastMsg = currentMessages[currentMessages.length - 1];
+                                if (lastMsg.role === 'tool') {
+                                    lastMsg.content += `\n\nTypeScript compilation result:\n${compilationOutput}`;
+                                    log.debug(
+                                        'Appended TypeScript compilation result to last tool message',
+                                    );
+                                }
+                            }
+                        } catch (error) {
+                            const errorMsg =
+                                error instanceof Error ? error.message : 'Unknown error';
+                            log.debug(`TypeScript compilation failed: ${errorMsg}`);
+
+                            // Append compilation error to the last tool message
+                            if (currentMessages.length > 0) {
+                                const lastMsg = currentMessages[currentMessages.length - 1];
+                                if (lastMsg.role === 'tool') {
+                                    lastMsg.content += `\n\nTypeScript compilation error:\n${errorMsg}`;
+                                }
+                            }
+                        }
                     }
                 }
             } catch (error) {
