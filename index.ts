@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { init as initConfig, getConfig } from './src/config.ts';
 import type Agent from './src/agent.ts';
+import { initFileLogging, closeLogFile } from './src/log.ts';
 import fs from 'fs';
 import path from 'path';
 
@@ -58,6 +59,11 @@ async function main() {
           : config.container;
     config.logFile = options.logFile;
     config.rulesFile = options.rules;
+
+    // Initialize file logging if configured
+    if (config.logFile) {
+        initFileLogging(config.logFile);
+    }
 
     const intro = options.intro;
     var question = args[0];

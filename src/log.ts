@@ -1,7 +1,10 @@
 import { getConfig } from './config.ts';
+import fs from 'fs';
+import path from 'path';
 
 let singleton;
 const loggers: Map<string, Log> = new Map();
+let logStream: fs.WriteStream | null = null;
 
 // Mapping of log levels to numbers for easier comparison
 const LOG_LEVELS = {
@@ -29,7 +32,7 @@ class Log {
 
     private printMessage(level: string, message: string): void {
         var msg;
-        if (typeof value !== 'string') {
+        if (typeof message !== 'string') {
             msg = JSON.stringify(message);
         } else {
             msg = message;
@@ -109,6 +112,65 @@ class Log {
         loggers.set(moduleName, newLogger);
         return newLogger;
     }
+}
+
+// Initialize file logging if logFile is configured
+export function initFileLogging(logFile: string): void {
+    if (!logFile) {
+        return;
+    }
+
+    try {
+        // Ensure the directory exists
+        const logDir = path.dirname(logFile);
+        if (!fs.existsSync(logDir)) {
+            fs.mkdirSync(logDir, { recursive: true });
+        }
+
+        // Create write stream in append mode
+        logStream = fs.createWriteStream(logFile, { flags: 'a' });
+
+        // Handle stream errors
+        logStream.on('error', (err) => {
+            console.error(`Error writing to log file ${logFile}:`, err.message);
+        });
+
+        console.log(`📝 Log file initialized: ${logFile}`);
+    } catch (error) {
+        console.error(`Failed to initialize log file ${logFile}:`, error.message);
+    }
+}
+
+// Write message to log file if stream is open
+export function writeToFile(message: string): void {
+    if (logStream) {
+        try {
+            // Strip ANSI color codes for file output
+            const plainMessage = message.replace(/\x1b\[[0-9;]*m/g, '');
+            logStream.write(plainMessage);
+        } catch (error) {
+            console.error('Error writing to log file:', error.message);
+        }
+    }
+}
+
+// Close the log file stream
+export function closeLogFile(): void {
+    if (logStream) {
+        logStream.end();
+        logStream = null;
+        console.log('📝 Log file closed');
+    }
+}
+
+// Create a print function that writes to both console and file
+export function createPrintFunction(originalPrint: (text: string) => void): (text: string) => void {
+    return (text: string) => {
+        // Call the original print (console or window)
+        originalPrint(text);
+        // Also write to file if configured
+        writeToFile(text);
+    };
 }
 
 export default Log;

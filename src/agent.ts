@@ -6,7 +6,7 @@ import type { Parser } from './parser.ts';
 import { PlainTextParser } from './parser-plain.ts';
 import { NativeParser } from './parser-native.ts';
 import Window from './window.ts';
-import Log from './log.ts';
+import Log, { createPrintFunction } from './log.ts';
 import { loadTools } from './toolLoader.ts';
 import type { Tools, ToolCall, ExecuteResult, Message, LLMResponse } from './interfaces.ts';
 import eventBus from './eventBus.ts';
@@ -44,7 +44,9 @@ class Agent {
         this.llm = new LLM(this.window.statusBar.updateState.bind(this.window.statusBar));
         this.modelManager = new ModelManager(this.llm, this.config);
         this.setupEventHandlers();
-        Log.setPrintMethod(this.window.print.bind(this.window));
+        // Wrap the window print method to also write to log file if configured
+        const windowPrint = this.window.print.bind(this.window);
+        Log.setPrintMethod(createPrintFunction(windowPrint));
     }
 
     private setupEventHandlers(): void {
