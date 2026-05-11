@@ -487,10 +487,13 @@ class Agent {
                 if (toolCalls.length > 0) {
                     complete = false;
 
-                    // Check if any tool call is writeFile or replace
-                    const hasWriteOrReplace = toolCalls.some(
-                        (tc) => tc.name === 'writeFile' || tc.name === 'replace',
-                    );
+                    // Check if any tool call is writeFile or replace on a TypeScript file
+                    const hasTypeScriptWriteOrReplace = toolCalls.some((tc) => {
+                        if (tc.name !== 'writeFile' && tc.name !== 'replace') return false;
+                        const filePath = tc.arguments?.path || '';
+                        const tsExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+                        return tsExtensions.some((ext) => filePath.endsWith(ext));
+                    });
 
                     for (const toolCall of toolCalls) {
                         if (!toolCall) continue;
@@ -508,8 +511,8 @@ class Agent {
                         this.window.statusBar.clearTool();
                     }
 
-                    // If any tool was writeFile or replace, run TypeScript compilation
-                    if (hasWriteOrReplace) {
+                    // If any tool was writeFile or replace on a TypeScript file, run TypeScript compilation
+                    if (hasTypeScriptWriteOrReplace) {
                         try {
                             log.debug('Running TypeScript compilation after file modifications');
                             this.window.setPrompt('Compiling TypeScript...');
