@@ -109,6 +109,9 @@ export class TerminalInputHandler {
             case 'q':
                 eventBus.emit('stop_request');
                 break;
+            case 'Q':
+                eventBus.emit('stop_tool');
+                break;
             case 'r':
                 eventBus.emit('toggleMode');
                 break;
