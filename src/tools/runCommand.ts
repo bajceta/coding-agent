@@ -6,7 +6,7 @@ import eventBus from '../eventBus.ts';
 
 const log = Log.get('runCommand');
 
-const TOOL_TIMEOUT_MS = 30000; // 30 seconds
+const TOOL_TIMEOUT_MS = 120000; // 120 seconds
 
 // Store reference to the currently running child process
 let currentChildProcess: ReturnType<typeof spawn> | null = null;
