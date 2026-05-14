@@ -3,7 +3,8 @@
 import { Command } from 'commander';
 import { init as initConfig, getConfig } from './src/config.ts';
 import type Agent from './src/agent.ts';
-import { initFileLogging, closeLogFile } from './src/log.ts';
+import { initFileLogging } from './src/log.ts';
+import { pickIssue } from './src/forgejoCli.ts';
 import fs from 'fs';
 import path from 'path';
 
@@ -23,11 +24,15 @@ program
     .option('--no-stream', 'Disables streaming api', true)
     .option('--no-tools', 'Disables tools', true)
     .option('-l, --log-file <file>', 'Sets the log file path')
-    .option('-m, --model <name>', 'Sets the model name to use or list available models', 1)
+    .option('-m, --model <name>', 'Sets the model name to use or list available models', '1')
     .option('-it, --interactive', 'Enables interactive mode', false)
     .option('-f, --files [files...]', 'Reads content from a file and uses it as the question')
     .option('-r, --rules <file>', 'Sets the rules file path')
     .option('-q, --question <text>', 'Question')
+    .option(
+        '--fj [issue_number]',
+        'Pick a Forgejo issue: search for open todo issues or use provided number, create worktree and PR',
+    )
     .argument('[question]', 'The question to ask the agent');
 
 program.parse(process.argv);
@@ -127,6 +132,23 @@ async function main() {
         console.log(`📝 Log file set to: ${config.logFile}`);
     }
 
+    // Handle --fj flag: pick a Forgejo issue, create worktree and PR
+    let fjQuestion: string | undefined = undefined;
+    if (options.fj !== undefined) {
+        const issueNumber = options.fj ? parseInt(options.fj as string, 10) : undefined;
+        try {
+            console.log(
+                `🔨 Picking Forgejo issue${issueNumber ? ` #${issueNumber}` : ' (searching for open todo)...'}`,
+            );
+            const result = await pickIssue(issueNumber);
+            fjQuestion = result;
+            console.log(result);
+        } catch (error: any) {
+            console.error(`💥 Failed to pick Forgejo issue: ${error.message}`);
+            process.exit(1);
+        }
+    }
+
     const isTTY = process.stdin.isTTY;
     let interactive = options.interactive;
 
@@ -146,7 +168,9 @@ async function main() {
     }
 
     // Handle command line arguments
-    if (question || fileinput) {
+    if (fjQuestion) {
+        await agent.askQuestion(fjQuestion, interactive);
+    } else if (question || fileinput) {
         await agent.askQuestion(fileinput + '\n Prompt: ' + question, interactive);
     } else if (isTTY) {
         agent.showUserPrompt();

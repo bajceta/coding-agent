@@ -2,11 +2,7 @@ import type { Tools } from './interfaces.ts';
 import fs from 'fs';
 import path from 'path';
 
-function systemPrompt(
-    tools: Tools,
-    toolPrompt: (tools: Tools) => string,
-    rulesFile?: string,
-): string {
+function systemPrompt(tools: Tools, toolPrompt: (tools: Tools) => string): string {
     const basePrompt = `
 You are a helpful coding assistant. State only facts that you are sure of.
 When asked to write code, provide complete, working examples with proper formatting.
@@ -30,17 +26,6 @@ If the user rejects a tool, ask the user why.
     if (fs.existsSync(agentMdPath)) {
         const agentMdContent = fs.readFileSync(agentMdPath, 'utf8');
         prompt += `\n# Agent Instructions\n${agentMdContent}\n`;
-    }
-
-    if (rulesFile) {
-        const resolvedRulesPath = path.resolve(rulesFile);
-        if (fs.existsSync(resolvedRulesPath)) {
-            const rulesContent = fs.readFileSync(resolvedRulesPath, 'utf8');
-            prompt += `\\n${rulesContent}\\n`;
-        } else {
-            console.error('Rules file does not exists' + resolvedRulesPath);
-            process.exit(1);
-        }
     }
 
     return prompt;

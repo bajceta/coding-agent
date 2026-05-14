@@ -21,14 +21,16 @@ async function detectRepo(cwd?: string): Promise<{ owner: string; repo: string }
                     return { owner: urlMatch[1], repo: urlMatch[2] };
                 }
                 // git@host:owner/repo.git or https://host/owner/repo.git
-                urlMatch = line.match(/[\s:]+(git@[^:\/]+:|https?:\/\/)([^\/:]+)\/([^\/\s]+)\.git/);
+                urlMatch = line.match(
+                    /[\s:]+(git@[^:\/]+:|https?:\/\/[^\/]+)\/([^\/]+)\/([^\/\s]+)\.git/,
+                );
                 if (urlMatch) {
                     return { owner: urlMatch[2], repo: urlMatch[3] };
                 }
             }
         }
         return null;
-    } catch (error) {
+    } catch {
         return null;
     }
 }
@@ -50,7 +52,6 @@ async function forgejoRequest(
     const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/${endpoint.replace(/^\/+/, '')}`;
     const method = options?.method || 'GET';
 
-    // Build curl command with proper quoting for arguments that contain spaces
     const curlArgs = ['-s', '-X', method];
     curlArgs.push('-H', `Authorization: token ${token}`);
     curlArgs.push('-H', 'Content-Type: application/json');
@@ -62,10 +63,39 @@ async function forgejoRequest(
 
     curlArgs.push(url);
 
-    // Use proper shell quoting by escaping each argument
     const shellArgs = curlArgs.map((arg) => `'${arg.replace(/'/g, "'\\''")}'`).join(' ');
     const { stdout } = await execAsync(`curl ${shellArgs}`);
     return JSON.parse(stdout);
+}
+
+/**
+ * Update issue labels: remove to-do, add in-progress
+ */
+async function markInProgress(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    currentLabels: any[],
+): Promise<void> {
+    const newLabels = currentLabels.filter((l: any) => l.name !== 'to-do').map((l: any) => l.id);
+
+    try {
+        await forgejoRequest(`/repos/${owner}/${repo}/issues/${issueNumber}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ labels: newLabels }),
+        });
+    } catch {
+        // Ignore label update errors
+    }
+
+    try {
+        await forgejoRequest(`/repos/${owner}/${repo}/issues/${issueNumber}/labels`, {
+            method: 'POST',
+            body: JSON.stringify({ name: 'in-progress' }),
+        });
+    } catch {
+        // Label might not exist yet, ignore
+    }
 }
 
 async function execute(repo?: string, cwd?: string): Promise<ExecuteResult> {
@@ -101,7 +131,6 @@ async function execute(repo?: string, cwd?: string): Promise<ExecuteResult> {
             `/repos/${repoInfo.owner}/${repoInfo.repo}/issues?state=open&labels=to-do`,
         );
 
-        // If no issues with to-do label, get all open issues
         if (!issues || issues.length === 0) {
             issues = await forgejoRequest(
                 `/repos/${repoInfo.owner}/${repoInfo.repo}/issues?state=open`,
@@ -118,39 +147,113 @@ async function execute(repo?: string, cwd?: string): Promise<ExecuteResult> {
 
         // Pick the first issue
         const issue = issues[0];
-
-        // Use issue.number for the issue identifier (index is null in Forgejo API)
         const issueNumber = issue.number;
-
-        // Update labels: remove to-do, add in-progress
         const currentLabels = issue.labels || [];
-        const newLabels = currentLabels
-            .filter((l: any) => l.name !== 'to-do')
-            .map((l: any) => l.id);
 
+        // Mark issue as in-progress
+        await markInProgress(repoInfo.owner, repoInfo.repo, issueNumber, currentLabels);
+
+        // Create worktree and branch
+        const branchName = `issue-${issueNumber}`;
+        const defaultWorktreePath = `.worktrees/issue-${issueNumber}`;
+        const wtPath = cwd ? `${cwd}/${defaultWorktreePath}` : defaultWorktreePath;
+        const gitCwd = cwd || '.';
+
+        // Fetch latest state from remote
+        await execAsync('git fetch origin', { cwd: gitCwd });
+
+        // Check if worktree already exists
+        let worktreeExists = false;
         try {
-            await forgejoRequest(
-                `/repos/${repoInfo.owner}/${repoInfo.repo}/issues/${issueNumber}`,
-                {
-                    method: 'PATCH',
-                    body: JSON.stringify({ labels: newLabels }),
-                },
-            );
+            const { stdout: wtList } = await execAsync('git worktree list --porcelain', {
+                cwd: gitCwd,
+            });
+            worktreeExists = wtList.includes(wtPath);
         } catch {
-            // Ignore label update errors
+            // If we can't list worktrees, proceed with creation
         }
 
-        // Add in-progress label separately
-        try {
-            await forgejoRequest(
-                `/repos/${repoInfo.owner}/${repoInfo.repo}/issues/${issueNumber}/labels`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({ name: 'in-progress' }),
-                },
-            );
-        } catch {
-            // Label might not exist yet, ignore
+        if (worktreeExists) {
+            // Worktree already exists, skip creation
+        } else {
+            // Check if branch already exists (local or remote)
+            let branchExists = false;
+            try {
+                const { stdout: branchCheck } = await execAsync(
+                    `git rev-parse --verify ${branchName}`,
+                    { cwd: gitCwd },
+                );
+                branchExists = !!branchCheck.trim();
+            } catch {
+                // Check remote
+                try {
+                    const { stdout: remoteCheck } = await execAsync(
+                        `git rev-parse --verify origin/${branchName}`,
+                        { cwd: gitCwd },
+                    );
+                    if (remoteCheck.trim()) {
+                        // Remote branch exists — create local branch tracking it
+                        await execAsync(`git branch ${branchName} origin/${branchName}`, {
+                            cwd: gitCwd,
+                        });
+                        branchExists = true;
+                    }
+                } catch {
+                    // Branch doesn't exist anywhere
+                }
+            }
+
+            const worktreeCmd = branchExists
+                ? `git worktree add ${wtPath} ${branchName}`
+                : `git worktree add ${wtPath} -b ${branchName}`;
+
+            try {
+                await execAsync(worktreeCmd, { cwd: gitCwd });
+            } catch (error: any) {
+                const errorMsg = error.stderr || error.message || '';
+                // Only fail on actual errors, not git's informational messages
+                if (errorMsg.includes('fatal:') || errorMsg.includes('error:')) {
+                    return {
+                        success: false,
+                        content: null,
+                        error: `Failed to create worktree: ${errorMsg}`,
+                    };
+                }
+                // Git outputs "Preparing worktree" to stderr but command succeeded
+            }
+        }
+
+        // Push the branch using SSH key from AGENT_SSH_KEY
+        const pushEnv: Record<string, string> = {};
+        if (process.env.AGENT_SSH_KEY) {
+            pushEnv.GIT_SSH_COMMAND = `ssh -i ${process.env.AGENT_SSH_KEY} -o StrictHostKeyChecking=no`;
+        }
+        await execAsync(`git push -u origin ${branchName}`, {
+            cwd: gitCwd,
+            env: { ...process.env, ...pushEnv },
+        });
+
+        // Check if PR already exists for this branch
+        const existingPRs = await forgejoRequest(
+            `/repos/${repoInfo.owner}/${repoInfo.repo}/pulls?state=open&head=${branchName}`,
+        );
+
+        let pr: any;
+        if (existingPRs && existingPRs.length > 0) {
+            pr = existingPRs[0];
+        } else {
+            // Create PR via Forgejo API
+            const prBody = `${issue.body || ''}\n\nCloses #${issueNumber}`;
+
+            pr = await forgejoRequest(`/repos/${repoInfo.owner}/${repoInfo.repo}/pulls`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: issue.title,
+                    body: prBody,
+                    head: branchName,
+                    base: issue.base?.branch || 'main',
+                }),
+            });
         }
 
         // Return context to agent
@@ -166,7 +269,17 @@ ${issue.body || '(no description)'}
 **Labels**: ${currentLabels.map((l: any) => l.name).join(', ')}
 
 ---
-You can now work on this ticket. When done, use \`forgejoCreatePR\` with issue_number=${issueNumber} and repo=${repoInfo.owner}/${repoInfo.repo} to create a worktree and pull request.`;
+
+## Pull Request Created
+
+**PR #${pr.number}**: ${pr.title}
+**PR URL**: ${pr.html_url}
+**Branch**: ${branchName}
+**Worktree path**: ${wtPath}
+
+---
+You can now switch to the worktree with: \`cd ${wtPath}\`
+Make your changes, commit, and push to ${branchName}. The PR will update automatically.`;
 
         return {
             success: true,
@@ -184,12 +297,14 @@ You can now work on this ticket. When done, use \`forgejoCreatePR\` with issue_n
 
 export default {
     description:
-        'Pick a ticket from Forgejo in to-do state, mark it as in-progress, and return the ticket context (title, description) for the agent to work on. Requires FORGEJO_URL and FORGEJO_TOKEN env vars.',
+        'Pick a ticket from Forgejo in to-do state, mark it as in-progress, create a git worktree and pull request, and return the ticket context (title, description) for the agent to work on. Requires FORGEJO_URL and FORGEJO_TOKEN env vars.',
     arguments: [
         {
             repo: 'Optional: owner/repo (e.g., innomenta/ESSController). Auto-detected from git remote if not provided.',
         },
-        { cwd: 'Optional: working directory to run git commands from (for repo detection).' },
+        {
+            cwd: 'Optional: working directory to run git commands from (for repo detection and worktree creation).',
+        },
     ],
     execute,
     enabled: true,

@@ -1,4 +1,5 @@
-const { evaluateCommandMode } = require('../src/evaluateCommand');
+import { describe, it, expect } from 'vitest';
+import { evaluateCommandMode } from '../src/evaluateCommand.ts';
 
 const readCommands = [
     'git diff',
@@ -56,7 +57,7 @@ const runCommands = [
 describe('evaluateCommandMode', () => {
     describe('Read mode commands', () => {
         readCommands.forEach((command) => {
-            test(`"${command}" should be read mode`, () => {
+            it(`"${command}" should be read mode`, () => {
                 expect(evaluateCommandMode(command)).toBe('read');
             });
         });
@@ -64,7 +65,7 @@ describe('evaluateCommandMode', () => {
 
     describe('Write mode commands', () => {
         writeCommands.forEach((command) => {
-            test(`"${command}" should be write mode`, () => {
+            it(`"${command}" should be write mode`, () => {
                 expect(evaluateCommandMode(command)).toBe('write');
             });
         });
@@ -72,7 +73,7 @@ describe('evaluateCommandMode', () => {
 
     describe('Run mode commands', () => {
         runCommands.forEach((command) => {
-            test(`"${command}" should be run mode`, () => {
+            it(`"${command}" should be run mode`, () => {
                 expect(evaluateCommandMode(command)).toBe('run');
             });
         });

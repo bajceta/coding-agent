@@ -1,5 +1,6 @@
-const fs = require('fs');
-const { parseToolCalls, extractToolCallRaw, setTools } = require('../src/parser-json');
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { JSONParser } from '../src/parser-json.ts';
 
 const tools = {
     readFile: {
@@ -17,10 +18,11 @@ const tools = {
     },
 };
 
-setTools(tools);
+const parser = new JSONParser();
+
 // Test cases for the tool call parser
 describe('Tool Call Parser JSON', () => {
-    test('should extract single tool call', () => {
+    it('should extract single tool call', () => {
         const responseText = `
 d file readme.md
 
@@ -35,15 +37,13 @@ Agent:
 }
 something more
 `;
-        const result = extractToolCallRaw(responseText);
+        const result = parser.parseToolCalls({ content: responseText }, tools as any);
 
+        expect(result).toHaveLength(1);
         expect(result[0]).toEqual({ name: 'readFile', arguments: { path: '/tmp/test.txt' } });
-
-        const toolCalls = parseToolCalls(responseText);
-        console.log(toolCalls);
     });
 
-    test('should extract 2 tool calls', () => {
+    it('should extract 2 tool calls', () => {
         const responseText = `
 d file readme.md
 
@@ -67,8 +67,9 @@ something more
   }
 }
 `;
-        const result = extractToolCallRaw(responseText);
+        const result = parser.parseToolCalls({ content: responseText }, tools as any);
 
+        expect(result).toHaveLength(2);
         expect(result[0]).toEqual({ name: 'readFile', arguments: { path: '/tmp/test.txt' } });
         expect(result[1]).toEqual({
             name: 'writeFile',
@@ -79,10 +80,11 @@ something more
         });
     });
 
-    test('should extract with quotes tool calls', () => {
-        const responseText = fs.readFileSync('./test/smalljson.txt', 'utf8');
-        const result = extractToolCallRaw(responseText);
+    it('should extract with quotes tool calls', () => {
+        const responseText = readFileSync('./test/smalljson.txt', 'utf8');
+        const result = parser.parseToolCalls({ content: responseText }, tools as any);
 
+        expect(result).toHaveLength(1);
         expect(result[0]).toEqual({
             name: 'writeFile',
             arguments: {
@@ -92,15 +94,12 @@ something more
         });
     });
 
-    test('should extract when there is js code inside tool calls', () => {
-        const fs = require('fs');
-        const responseText = fs.readFileSync('./test/longJsonFile.txt', 'utf8');
-        const result = extractToolCallRaw(responseText);
+    it('should extract when there is js code inside tool calls', () => {
+        const responseText = readFileSync('./test/longJsonFile.txt', 'utf8');
+        const result = parser.parseToolCalls({ content: responseText }, tools as any);
 
         expect(result[0].name).toEqual('writeFile');
         expect(result[0].arguments.path).toEqual('agent2.js');
-        expect(result[0].arguments.path).toEqual('agent2.js');
-
         expect(result[0].arguments.content).toMatch(/module.exports = Agent;$/);
         expect(result[0].arguments.content).toMatch(/const LLM/);
     });

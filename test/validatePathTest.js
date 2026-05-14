@@ -4,7 +4,7 @@ const { validatePath } = require('../src/utils/validatePath');
 
 describe('validatePath', () => {
     const homeDir = os.homedir();
-    const cwd = process.cwd();
+    const _cwd = process.cwd();
 
     describe('tilde expansion', () => {
         test('should expand ~ to home directory', () => {

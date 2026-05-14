@@ -101,7 +101,7 @@ class Agent {
         await this.loadTools();
         this.messages.push({
             role: 'system',
-            content: systemPrompt(this.tools, this.parser.toolPrompt, this.config.rulesFile),
+            content: systemPrompt(this.tools, this.parser.toolPrompt),
         });
         this.window.setReady();
         this.window.statusBar.updateState({
@@ -319,7 +319,7 @@ class Agent {
 
     async askQuestion(question: string, interactive: boolean) {
         log.info('Ask question, interactive: ' + interactive);
-        if (!question.trim()) {
+        if (!question || !question.trim()) {
             throw new Error('Question cannot be empty.');
         }
 
@@ -472,7 +472,19 @@ class Agent {
                 //qwen failed toolcall retry
                 if (typeof response.msg.content === 'string') {
                     const text = response.msg.content as String;
-                    if (text.includes('<tool_call>')) {
+                    if (text.includes('tool_call>')) {
+                        const msg = {
+                            role: 'user',
+                            content: 'Toll call wrong format, try again',
+                        };
+                        currentMessages.push(msg);
+                        complete = false;
+                    }
+                }
+
+                if (response.msg.reasoning_content) {
+                    const text = response.msg.reasoning_content;
+                    if (text && text.includes('tool_call>')) {
                         const msg = {
                             role: 'user',
                             content: 'Toll call wrong format, try again',

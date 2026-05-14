@@ -21,7 +21,9 @@ async function detectRepo(cwd?: string): Promise<{ owner: string; repo: string }
                     return { owner: urlMatch[1], repo: urlMatch[2] };
                 }
                 // git@host:owner/repo.git or https://host/owner/repo.git
-                urlMatch = line.match(/[\s:]+(git@[^:\/]+:|https?:\/\/)([^\/:]+)\/([^\/\s]+)\.git/);
+                urlMatch = line.match(
+                    /[\s:]+(git@[^:\/]+:|https?:\/\/[^\/]+)([^\/]+)\/([^\/\s]+)\.git/,
+                );
                 if (urlMatch) {
                     return { owner: urlMatch[2], repo: urlMatch[3] };
                 }
@@ -141,8 +143,15 @@ async function execute(issue_number: string, repo?: string, cwd?: string): Promi
             };
         }
 
-        // Push the branch
-        await execAsync(`git push -u origin ${branchName}`, { cwd: gitCwd });
+        // Push the branch using SSH key from AGENT_SSH_KEY
+        const pushEnv: Record<string, string> = {};
+        if (process.env.AGENT_SSH_KEY) {
+            pushEnv.GIT_SSH_COMMAND = `ssh -i ${process.env.AGENT_SSH_KEY} -o StrictHostKeyChecking=no`;
+        }
+        await execAsync(`git push -u origin ${branchName}`, {
+            cwd: gitCwd,
+            env: { ...process.env, ...pushEnv },
+        });
 
         // Create PR via Forgejo API
         const prBody = `${issue.body || ''}\n\nCloses #${issueNum}`;
@@ -156,6 +165,33 @@ async function execute(issue_number: string, repo?: string, cwd?: string): Promi
                 base: issue.base?.branch || 'main',
             }),
         });
+
+        // Mark issue as in-progress: remove to-do label, add in-progress label
+        const currentLabels = issue.labels || [];
+        const newLabels = currentLabels
+            .filter((l: any) => l.name !== 'to-do')
+            .map((l: any) => l.id);
+
+        try {
+            await forgejoRequest(`/repos/${repoInfo.owner}/${repoInfo.repo}/issues/${issueNum}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ labels: newLabels }),
+            });
+        } catch {
+            // Ignore label update errors
+        }
+
+        try {
+            await forgejoRequest(
+                `/repos/${repoInfo.owner}/${repoInfo.repo}/issues/${issueNum}/labels`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({ name: 'in-progress' }),
+                },
+            );
+        } catch {
+            // Label might not exist yet, ignore
+        }
 
         const result = `## Pull Request Created
 
@@ -200,5 +236,5 @@ export default {
         },
     ],
     execute,
-    enabled: true,
+    enabled: false,
 };
