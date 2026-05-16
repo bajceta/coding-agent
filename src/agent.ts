@@ -554,8 +554,15 @@ class Agent {
                                 }
                             }
                         } catch (error) {
-                            const errorMsg =
-                                error instanceof Error ? error.message : 'Unknown error';
+                            let errorMsg: string;
+                            if (typeof error === 'object' && error !== null && 'stderr' in error) {
+                                errorMsg =
+                                    (error as any).stderr ||
+                                    (error as any).stdout ||
+                                    'TypeScript compilation failed.';
+                            } else {
+                                errorMsg = error instanceof Error ? error.message : 'Unknown error';
+                            }
                             log.debug(`TypeScript compilation failed: ${errorMsg}`);
 
                             // Append compilation error to the last tool message
