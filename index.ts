@@ -171,6 +171,7 @@ async function main() {
     if (fjQuestion) {
         await agent.askQuestion(fjQuestion, interactive);
     } else if (question || fileinput) {
+        if (!fileinput) fileinput = '';
         await agent.askQuestion(fileinput + '\n Prompt: ' + question, interactive);
     } else if (isTTY) {
         agent.showUserPrompt();

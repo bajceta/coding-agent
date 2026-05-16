@@ -469,6 +469,15 @@ class Agent {
                 currentMessages.push(response.msg);
                 await response.done;
                 this.updateStats(response.stats);
+                //handle empty message
+                if (
+                    response.msg.reasoning_content === '' &&
+                    response.msg.content === '' &&
+                    response.msg.tool_calls?.length === 0
+                ) {
+                    currentMessages.pop();
+                    continue;
+                }
                 //qwen failed toolcall retry
                 if (typeof response.msg.content === 'string') {
                     const text = response.msg.content as String;
