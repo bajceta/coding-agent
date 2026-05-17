@@ -7,6 +7,7 @@ import { initFileLogging } from './src/log.ts';
 import { pickIssue } from './src/forgejoCli.ts';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 const program = new Command();
 
@@ -62,13 +63,11 @@ async function main() {
         : options.disableContainers
           ? false
           : config.container;
-    config.logFile = options.logFile;
+    config.logFile = options.logFile || `/tmp/agent-log-${crypto.randomUUID()}`;
     config.rulesFile = options.rules;
 
-    // Initialize file logging if configured
-    if (config.logFile) {
-        initFileLogging(config.logFile);
-    }
+    // Initialize file logging
+    initFileLogging(config.logFile);
 
     const intro = options.intro;
     var question = args[0];

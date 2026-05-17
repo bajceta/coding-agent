@@ -203,5 +203,5 @@ export default {
         { cwd: 'Optional: working directory to run git commands from (for repo detection).' },
     ],
     execute,
-    enabled: true,
+    enabled: false,
 };

@@ -470,18 +470,22 @@ class Agent {
                 await response.done;
                 this.updateStats(response.stats);
                 //handle empty message
-                if (
-                    response.msg.reasoning_content === '' &&
-                    response.msg.content === '' &&
-                    response.msg.tool_calls?.length === 0
-                ) {
-                    currentMessages.pop();
+                if (response.msg.content === '' && response.msg.tool_calls?.length === 0) {
+                    log.error('no content and no toolcall, pop the message');
+                    //currentMessages.pop();
+                    const msg = {
+                        role: 'user',
+                        content: 'continue',
+                    };
+                    currentMessages.push(msg);
+                    complete = false;
                     continue;
                 }
                 //qwen failed toolcall retry
                 if (typeof response.msg.content === 'string') {
                     const text = response.msg.content as String;
                     if (text.includes('tool_call>')) {
+                        log.error('qwen bad tool call');
                         const msg = {
                             role: 'user',
                             content: 'Toll call wrong format, try again',
@@ -494,6 +498,7 @@ class Agent {
                 if (response.msg.reasoning_content) {
                     const text = response.msg.reasoning_content;
                     if (text && text.includes('tool_call>')) {
+                        log.error('qwen tool call in reasoning_content');
                         const msg = {
                             role: 'user',
                             content: 'Toll call wrong format, try again',
