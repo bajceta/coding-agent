@@ -43,10 +43,10 @@ class LLM {
         };
 
         function processToolCallStream(stream) {
-            log.debug(JSON.stringify(stream));
+            log.trace(JSON.stringify(stream));
             stream.forEach((part) => {
                 let current;
-                log.debug(JSON.stringify(part));
+                log.trace(JSON.stringify(part));
                 if (!msg.tool_calls[part.index]) {
                     msg.tool_calls[part.index] = part;
                 } else {

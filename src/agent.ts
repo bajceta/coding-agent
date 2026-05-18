@@ -468,6 +468,7 @@ class Agent {
                 response = this.llm.makeRequest(currentMessages, this.tools);
                 currentMessages.push(response.msg);
                 await response.done;
+                log.debug(response.msg);
                 this.updateStats(response.stats);
                 //handle empty message
                 if (response.msg.content === '' && response.msg.tool_calls?.length === 0) {

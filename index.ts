@@ -16,7 +16,7 @@ program
     .description('A coding agent with dynamic tool discovery and OpenAI-compatible LLM support')
     .version('1.0.0')
     .option('-p, --parser <type>', 'Sets the parser type (native, plain, json)', 'native')
-    .option('-L, --log-level <level>', 'Sets the log level', 'info')
+    .option('-L, --log-level <level>', 'Sets the log level', 'debug')
     .option('-y, --yolo', 'Enables RUN mode (all tools allowed without confirmation)', false)
     .option('--mode <mode>', 'Sets the execution mode (read, write, run)', 'read')
     .option('--disable-containers', 'Disables container mode', false)
