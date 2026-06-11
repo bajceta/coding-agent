@@ -17,6 +17,8 @@ import { evaluateCommandMode } from './evaluateCommand.ts';
 import dns from 'node:dns';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -317,6 +319,44 @@ class Agent {
         this.window.setPrompt('\x1b[34mUser: \x1b[0m');
     }
 
+    /**
+     * Save messages to a JSON file
+     */
+    saveSession(filePath: string): void {
+        try {
+            const resolvedPath = path.resolve(filePath);
+            fs.writeFileSync(resolvedPath, JSON.stringify(this.messages, null, 2));
+            log.info(`Session saved to ${resolvedPath}`);
+        } catch (error) {
+            this.handleError('Error saving session', error);
+        }
+    }
+
+    /**
+     * Load messages from a JSON file
+     */
+    loadSession(filePath: string): boolean {
+        try {
+            const resolvedPath = path.resolve(filePath);
+            if (!fs.existsSync(resolvedPath)) {
+                this.print(`\nSession file not found: ${resolvedPath}\n`);
+                return false;
+            }
+            const data = fs.readFileSync(resolvedPath, 'utf8');
+            const messages = JSON.parse(data);
+            if (!Array.isArray(messages)) {
+                this.print(`\nInvalid session file format: expected an array of messages\n`);
+                return false;
+            }
+            this.messages = messages;
+            log.info(`Session loaded from ${resolvedPath} (${messages.length} messages)`);
+            return true;
+        } catch (error) {
+            this.handleError('Error loading session', error);
+            return false;
+        }
+    }
+
     async askQuestion(question: string, interactive: boolean) {
         log.info('Ask question, interactive: ' + interactive);
         if (!question || !question.trim()) {
@@ -592,6 +632,11 @@ class Agent {
         }
 
         this.showUserPrompt();
+
+        // Save session if configured
+        if (this.config.saveFile) {
+            this.saveSession(this.config.saveFile);
+        }
     }
 
     stopRequest() {

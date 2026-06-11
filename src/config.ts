@@ -29,6 +29,7 @@ export interface Config {
     modelName: string;
     stream: boolean;
     mcpServers: MCPServerConfig[];
+    saveFile: string;
 }
 
 const defaultConfig: Config = {
@@ -49,6 +50,7 @@ const defaultConfig: Config = {
     modelName: 'default',
     stream: true,
     tools: true,
+    saveFile: '',
     mcpServers: [
         {
             name: 'browsermcp',

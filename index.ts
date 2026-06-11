@@ -34,6 +34,8 @@ program
         '--fj [issue_number]',
         'Pick a Forgejo issue: search for open todo issues or use provided number, create worktree and PR',
     )
+    .option('--save <file>', 'Save messages to a JSON file after each turn')
+    .option('--continue <file>', 'Load messages from a JSON session file and continue')
     .argument('[question]', 'The question to ask the agent');
 
 program.parse(process.argv);
@@ -65,6 +67,7 @@ async function main() {
           : config.container;
     config.logFile = options.logFile || `/tmp/agent-log-${crypto.randomUUID()}`;
     config.rulesFile = options.rules;
+    config.saveFile = options.save || '';
 
     // Initialize file logging
     initFileLogging(config.logFile);
@@ -164,6 +167,29 @@ async function main() {
     // Handle model selection by number if specified
     if (modelNumber !== null) {
         await agent.handleSelectModelByNumber(modelNumber);
+    }
+
+    // Handle --continue flag: load session and enter interactive mode
+    if (options.continue) {
+        const sessionFile = options.continue;
+        console.log(`📂 Loading session from ${sessionFile}`);
+        const loaded = agent.loadSession(sessionFile);
+        if (!loaded) {
+            console.error(`Failed to load session from ${sessionFile}`);
+            process.exit(1);
+        }
+        // Also set save file to the same file for continuity
+        if (!config.saveFile) {
+            config.saveFile = sessionFile;
+        }
+        // Enter interactive mode
+        interactive = true;
+        if (isTTY) {
+            process.stdin.setRawMode(true);
+            process.stdin.setEncoding('utf8');
+        }
+        agent.showUserPrompt();
+        return;
     }
 
     // Handle command line arguments
