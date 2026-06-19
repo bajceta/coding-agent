@@ -126,16 +126,14 @@ class Window {
                         //msgs += JSON.stringify(call);
                         const _args = this.showmore
                             ? call.function.arguments
-                            : call.function.arguments.slice(0, 80) +
+                            : call.function.arguments?.slice(0, 80) +
                               ' length:' +
                               call.function.arguments?.length;
-                        const _lines = _args.split('\\n');
+                        const _lines = _args?.split('\\n');
                         msgs +=
-                            'toolcall: ' +
-                            call.function.name +
-                            ' ' +
-                            _lines.join('\n').replaceAll('\\"', '"').replaceAll('\\\\', '\\') +
-                            '\n';
+                            'toolcall: ' + call.function.name + ' ' + _lines
+                                ? _lines.join('\n').replaceAll('\\"', '"').replaceAll('\\\\', '\\')
+                                : '' + '\n';
                     }
                 }
             } else if (msg.role == 'user') {
