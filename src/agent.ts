@@ -456,7 +456,7 @@ class Agent {
 
             // Skip truncation for readFile tool to allow reading large files
             if (toolName !== 'readFile') {
-                const MAX_OUTPUT_LENGTH = 2000;
+                const MAX_OUTPUT_LENGTH = 10000;
                 if (result.content?.length > MAX_OUTPUT_LENGTH) {
                     const truncated = result.content.substring(0, MAX_OUTPUT_LENGTH);
                     const lastNewline = truncated.lastIndexOf('\n');
