@@ -67,7 +67,11 @@ class LLM {
             tools: openaiTools(tools) || [],
             tool_choice: 'auto',
             parallel_tool_calls: true,
-            chat_template_kwargs: { preserve_thinking: 'True' },
+            chat_template_kwargs: {
+                preserve_thinking: 'True',
+                reasoning_effort: 'low', // can be low, mid, xhigh
+                //TODO add a command line flag to select the reasoning_effort
+            },
         };
         if (this.config.stream) {
             requestBody['stream'] = true;
