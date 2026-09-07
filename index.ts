@@ -34,6 +34,7 @@ program
         '--fj [issue_number]',
         'Pick a Forgejo issue: search for open todo issues or use provided number, create worktree and PR',
     )
+    .option('-re, --reasoning-effort <level>', 'Sets the reasoning effort (low, mid, xhigh)', 'low')
     .option('--save <file>', 'Save messages to a JSON file after each turn')
     .option('--continue <file>', 'Load messages from a JSON session file and continue')
     .argument('[question]', 'The question to ask the agent');
@@ -68,6 +69,7 @@ async function main() {
     config.logFile = options.logFile || `/tmp/agent-log-${crypto.randomUUID()}`;
     config.rulesFile = options.rules;
     config.saveFile = options.save || '';
+    config.reasoningEffort = options.reasoningEffort;
 
     // Initialize file logging
     initFileLogging(config.logFile);

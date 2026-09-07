@@ -69,8 +69,7 @@ class LLM {
             parallel_tool_calls: true,
             chat_template_kwargs: {
                 preserve_thinking: 'True',
-                reasoning_effort: 'low', // can be low, mid, xhigh
-                //TODO add a command line flag to select the reasoning_effort
+                reasoning_effort: this.config.reasoningEffort, // can be low, mid, xhigh
             },
         };
         if (this.config.stream) {

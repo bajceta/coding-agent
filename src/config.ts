@@ -30,6 +30,7 @@ export interface Config {
     stream: boolean;
     mcpServers: MCPServerConfig[];
     saveFile: string;
+    reasoningEffort: string;
 }
 
 const defaultConfig: Config = {
@@ -51,6 +52,7 @@ const defaultConfig: Config = {
     stream: true,
     tools: true,
     saveFile: '',
+    reasoningEffort: 'low',
     mcpServers: [
         {
             name: 'browsermcp',
