@@ -254,8 +254,10 @@ class LLM {
      * @param modelConfig The new model configuration
      */
     updateModelConfig(modelConfig: any): void {
-        this.config.models[0].model = modelConfig.id;
-        eventBus.emit('update_status_bar', { model: this.config.models[0].model });
+        this.modelConfig.model = modelConfig.id;
+        const idx = this.config.models.indexOf(this.modelConfig);
+        if (idx >= 0) this.config.models[idx].model = modelConfig.id;
+        eventBus.emit('update_status_bar', { model: this.modelConfig.model });
     }
 }
 

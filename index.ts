@@ -15,7 +15,7 @@ program
     .name('codingagent')
     .description('A coding agent with dynamic tool discovery and OpenAI-compatible LLM support')
     .version('1.0.0')
-    .option('-p, --parser <type>', 'Sets the parser type (native, plain, json)', 'native')
+    .option('-P, --parser <type>', 'Sets the parser type (native, plain, json)', 'native')
     .option('-L, --log-level <level>', 'Sets the log level', 'debug')
     .option('-y, --yolo', 'Enables RUN mode (all tools allowed without confirmation)', false)
     .option('--mode <mode>', 'Sets the execution mode (read, write, run)', 'read')
@@ -26,6 +26,10 @@ program
     .option('--no-tools', 'Disables tools', true)
     .option('-l, --log-file <file>', 'Sets the log file path')
     .option('-m, --model <name>', 'Sets the model name to use or list available models', '1')
+    .option(
+        '-p, --provider <index>',
+        'Selects a provider by 1-based index from the models list in codingagent.json',
+    )
     .option('-it, --interactive', 'Enables interactive mode', false)
     .option('-f, --files [files...]', 'Reads content from a file and uses it as the question')
     .option('-r, --rules <file>', 'Sets the rules file path')
@@ -170,6 +174,21 @@ async function main() {
     if (isTTY) {
         process.stdin.setRawMode(true);
         process.stdin.setEncoding('utf8');
+    }
+
+    // Handle provider selection by 1-based index from the models list in codingagent.json
+    if (options.provider) {
+        const providerIndex = parseInt(options.provider, 10);
+        if (isNaN(providerIndex) || providerIndex < 1 || providerIndex > config.models.length) {
+            console.error(
+                `❌ Invalid provider index ${options.provider}. Available providers: ${config.models.length}`,
+            );
+            config.models.forEach((m, i) => console.error(`   ${i + 1}. ${m.name} (${m.model})`));
+            process.exit(1);
+        }
+        const provider = config.models[providerIndex - 1];
+        config.modelName = provider.name;
+        console.log(`🎯 Provider set to: ${provider.name} (${provider.model})`);
     }
 
     // Create the agent
