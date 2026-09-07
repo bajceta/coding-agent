@@ -39,6 +39,17 @@ program
     .option('--continue <file>', 'Load messages from a JSON session file and continue')
     .argument('[question]', 'The question to ask the agent');
 
+// Map reasoning-effort shorthands (l/m/h) to their full API values
+const REASONING_EFFORT_MAP: Record<string, string> = {
+    l: 'low',
+    m: 'mid',
+    h: 'xhigh',
+};
+
+function normalizeReasoningEffort(value: string): string {
+    return REASONING_EFFORT_MAP[value] ?? value;
+}
+
 program.parse(process.argv);
 
 const options = program.opts();
@@ -69,7 +80,7 @@ async function main() {
     config.logFile = options.logFile || `/tmp/agent-log-${crypto.randomUUID()}`;
     config.rulesFile = options.rules;
     config.saveFile = options.save || '';
-    config.reasoningEffort = options.reasoningEffort;
+    config.reasoningEffort = normalizeReasoningEffort(options.reasoningEffort);
 
     // Initialize file logging
     initFileLogging(config.logFile);
