@@ -31,6 +31,7 @@ class Log {
     }
 
     private printMessage(level: string, message: string): void {
+        if (getConfig().silent) return;
         var msg;
         if (typeof message !== 'string') {
             msg = JSON.stringify(message);
@@ -135,7 +136,9 @@ export function initFileLogging(logFile: string): void {
             console.error(`Error writing to log file ${logFile}:`, err.message);
         });
 
-        console.log(`📝 Log file initialized: ${logFile}`);
+        if (!getConfig().silent) {
+            console.log(`📝 Log file initialized: ${logFile}`);
+        }
     } catch (error) {
         console.error(`Failed to initialize log file ${logFile}:`, error.message);
     }
@@ -159,7 +162,9 @@ export function closeLogFile(): void {
     if (logStream) {
         logStream.end();
         logStream = null;
-        console.log('📝 Log file closed');
+        if (!getConfig().silent) {
+            console.log('📝 Log file closed');
+        }
     }
 }
 

@@ -25,6 +25,7 @@ class Window {
     cursorColumn: number;
     prompt: string = 'User: ';
     showmore: boolean = false;
+    silent: boolean = false;
 
     constructor(agentMessages) {
         this.userLines = 0;
@@ -58,7 +59,7 @@ class Window {
 
     // Render status bar (called internally)
     renderStatusBar(): void {
-        if (!this.ready) return;
+        if (!this.ready || this.silent) return;
 
         const rows = process.stdout.rows;
         const columns = process.stdout.columns;
@@ -160,7 +161,7 @@ class Window {
     }
 
     render() {
-        if (!this.ready) return;
+        if (!this.ready || this.silent) return;
         process.stdout.write('\x1b[2J\x1b[H'); // Clear screen
         const buffer = this.content();
         const rows = process.stdout.rows;
@@ -190,11 +191,13 @@ class Window {
     private setupEventHandlers(): void {
         eventBus.on('exit', () => {
             this.ready = false;
-            console.log('Exit event received in window.ts');
-            for (let line of this.content()) {
-                console.log(line);
+            if (!this.silent) {
+                console.log('Exit event received in window.ts');
+                for (let line of this.content()) {
+                    console.log(line);
+                }
+                console.log(this.statusBar);
             }
-            console.log(this.statusBar);
         });
         eventBus.on('scroll', (direction: 'up' | 'down') => {
             this.handleScroll(direction);

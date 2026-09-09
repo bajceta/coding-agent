@@ -171,10 +171,10 @@ class LLM {
                         }
 
                         if (!this.config.stream) {
-                            console.log(raw);
+                            if (!this.config.silent) console.log(raw);
                             const _res = JSON.parse(raw);
                             try {
-                                console.log(_res); //handle 404 and other errors here
+                                if (!this.config.silent) console.log(_res);
                                 log.debug(JSON.stringify(_res.detail?.[0] || 'No details'));
                             } catch {}
                             log.debug(JSON.stringify(_res));

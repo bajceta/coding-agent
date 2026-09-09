@@ -40,6 +40,7 @@ class Agent {
     constructor(config: Config) {
         this.config = config;
         this.window = new Window(this.messages);
+        this.window.silent = config.silent;
         this.parser = this.initializeParser(this.config.parserType);
         this.imageHandler = new ImageHandler();
         this.fileHandler = new FileHandler();
@@ -370,6 +371,14 @@ class Agent {
         });
 
         await this.run();
+
+        if (this.config.silent) {
+            const lastAssistant = [...this.messages].reverse().find((m) => m.role === 'assistant');
+            if (lastAssistant && typeof lastAssistant.content === 'string') {
+                console.log(lastAssistant.content.trim());
+            }
+        }
+
         if (!interactive) {
             eventBus.emit('exit');
         }
@@ -477,6 +486,7 @@ class Agent {
     }
 
     print(chunk: string) {
+        if (this.config.silent) return;
         this.window.print(chunk);
     }
 

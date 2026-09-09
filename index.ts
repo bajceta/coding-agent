@@ -41,6 +41,7 @@ program
     .option('-re, --reasoning-effort <level>', 'Sets the reasoning effort (low, mid, xhigh)', 'low')
     .option('--save <file>', 'Save messages to a JSON file after each turn')
     .option('--continue <file>', 'Load messages from a JSON session file and continue')
+    .option('--silent', 'Suppress all output except the final assistant message', false)
     .argument('[question]', 'The question to ask the agent');
 
 // Map reasoning-effort shorthands (l/m/h) to their full API values
@@ -57,14 +58,12 @@ function normalizeReasoningEffort(value: string): string {
 program.parse(process.argv);
 
 const options = program.opts();
-console.log(options);
 const args = program.args;
 
 async function main() {
     initConfig();
 
     const config = getConfig();
-    console.log(options);
     // Map commander options to config
     config.parserType = options.parser;
     config.logLevel = options.logLevel;
@@ -85,6 +84,7 @@ async function main() {
     config.rulesFile = options.rules;
     config.saveFile = options.save || '';
     config.reasoningEffort = normalizeReasoningEffort(options.reasoningEffort);
+    config.silent = options.silent;
 
     // Initialize file logging
     initFileLogging(config.logFile);
@@ -126,29 +126,31 @@ async function main() {
         }
     }
 
-    if (intro) {
-        console.log('Coding Agent Started');
-        console.log('Press ESC twice to stop requests');
-        console.log('Type "exit" to quit\n');
-        console.log('Try asking the agent to use tools like:');
-        console.log('- "Read the contents of /etc/os-release"');
-        console.log('- "Create a new file called test.txt with content Hello World"');
-        console.log('- "Show me the current directory contents"');
-        console.log('');
-    }
+    if (!config.silent) {
+        if (intro) {
+            console.log('Coding Agent Started');
+            console.log('Press ESC twice to stop requests');
+            console.log('Type "exit" to quit\n');
+            console.log('Try asking the agent to use tools like:');
+            console.log('- "Read the contents of /etc/os-release"');
+            console.log('- "Create a new file called test.txt with content Hello World"');
+            console.log('- "Show me the current directory contents"');
+            console.log('');
+        }
 
-    if (config.executionMode === 'run') {
-        console.log('⚠️ RUN mode enabled: All tools will be allowed without confirmation');
-    }
+        if (config.executionMode === 'run') {
+            console.log('⚠️ RUN mode enabled: All tools will be allowed without confirmation');
+        }
 
-    if (config.container) {
-        console.log('⚠️ Container mode enabled');
-    } else {
-        console.log('⚠️ Container mode disabled');
-    }
+        if (config.container) {
+            console.log('⚠️ Container mode enabled');
+        } else {
+            console.log('⚠️ Container mode disabled');
+        }
 
-    if (config.logFile) {
-        console.log(`📝 Log file set to: ${config.logFile}`);
+        if (config.logFile) {
+            console.log(`📝 Log file set to: ${config.logFile}`);
+        }
     }
 
     // Handle --fj flag: pick a Forgejo issue, create worktree and PR
@@ -156,12 +158,14 @@ async function main() {
     if (options.fj !== undefined) {
         const issueNumber = options.fj ? parseInt(options.fj as string, 10) : undefined;
         try {
-            console.log(
-                `🔨 Picking Forgejo issue${issueNumber ? ` #${issueNumber}` : ' (searching for open todo)...'}`,
-            );
+            if (!config.silent) {
+                console.log(
+                    `🔨 Picking Forgejo issue${issueNumber ? ` #${issueNumber}` : ' (searching for open todo)...'}`,
+                );
+            }
             const result = await pickIssue(issueNumber);
             fjQuestion = result;
-            console.log(result);
+            if (!config.silent) console.log(result);
         } catch (error: any) {
             console.error(`💥 Failed to pick Forgejo issue: ${error.message}`);
             process.exit(1);
@@ -188,7 +192,7 @@ async function main() {
         }
         const provider = config.models[providerIndex - 1];
         config.modelName = provider.name;
-        console.log(`🎯 Provider set to: ${provider.name} (${provider.model})`);
+        if (!config.silent) console.log(`🎯 Provider set to: ${provider.name} (${provider.model})`);
     }
 
     // Create the agent
@@ -204,7 +208,7 @@ async function main() {
     // Handle --continue flag: load session and enter interactive mode
     if (options.continue) {
         const sessionFile = options.continue;
-        console.log(`📂 Loading session from ${sessionFile}`);
+        if (!config.silent) console.log(`📂 Loading session from ${sessionFile}`);
         const loaded = agent.loadSession(sessionFile);
         if (!loaded) {
             console.error(`Failed to load session from ${sessionFile}`);
