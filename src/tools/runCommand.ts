@@ -11,15 +11,29 @@ const TOOL_TIMEOUT_MS = 120000; // 120 seconds
 // Store reference to the currently running child process
 let currentChildProcess: ReturnType<typeof spawn> | null = null;
 
+// Kill the entire process group (shell + all child processes)
+function killProcessGroup(pid: number, signal: NodeJS.Signals): void {
+    try {
+        process.kill(-pid, signal);
+    } catch {
+        // Process group may already be gone
+        try {
+            process.kill(pid, signal);
+        } catch {
+            // Process already dead
+        }
+    }
+}
+
 // Listen for stop_tool event to kill the running command
 eventBus.on('stop_tool', () => {
     if (currentChildProcess && !currentChildProcess.killed) {
         log.info('Stopping running command...');
-        currentChildProcess.kill('SIGTERM');
+        killProcessGroup(currentChildProcess.pid, 'SIGTERM');
         // Force kill after a brief grace period
         setTimeout(() => {
             if (currentChildProcess && !currentChildProcess.killed) {
-                currentChildProcess.kill('SIGKILL');
+                killProcessGroup(currentChildProcess.pid, 'SIGKILL');
             }
         }, 1000);
     }
@@ -38,6 +52,7 @@ const runCommandWithTimeout = (
         const shell = options?.shell || '/bin/bash';
         const child = spawn(cmd, {
             shell,
+            detached: true,
             stdio: ['ignore', 'pipe', 'pipe'],
         });
 
@@ -58,11 +73,11 @@ const runCommandWithTimeout = (
         const timeout = setTimeout(() => {
             if (resolved) return;
             timedOut = true;
-            child.kill('SIGTERM');
+            killProcessGroup(child.pid, 'SIGTERM');
             // Force kill after a brief grace period
             setTimeout(() => {
                 if (!child.killed) {
-                    child.kill('SIGKILL');
+                    killProcessGroup(child.pid, 'SIGKILL');
                 }
             }, 1000);
         }, TOOL_TIMEOUT_MS);

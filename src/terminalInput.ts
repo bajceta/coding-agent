@@ -140,6 +140,7 @@ export class TerminalInputHandler {
             this.buffer = '';
             this.historyIndex = -1;
             this.printWholeBuffer(this.buffer);
+            this.setMode('normal');
             return;
         }
 
