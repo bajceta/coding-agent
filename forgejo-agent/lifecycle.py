@@ -64,6 +64,19 @@ def _ensure_pr(issue_num: int, title: str, body: str, branch: str, base: str,
     return pr_num
 
 
+def ensure_worktree(session: Session) -> str:
+    """Ensure the session's worktree is a valid git worktree; return its path.
+
+    Reuses an existing valid worktree, or recreates one if the stored path is
+    missing or corrupt (e.g. after a crashed run). Keeps session.worktree_path
+    in sync so every downstream git op runs in a real working tree. Idempotent.
+    """
+    base = get_default_branch()
+    wt, _branch = create_worktree(session.issue_number, session.repo_name, base)
+    session.worktree_path = wt
+    return wt
+
+
 # ─── New issue processing ──────────────────────────────────────
 
 
@@ -132,7 +145,7 @@ def retry_issue(issue_num: int, owner: str, repo: str, state: AgentState,
     if sid in state.sessions:
         # Existing session — relaunch with retry prompt
         session = state.sessions[sid]
-        wt = session.worktree_path
+        wt = ensure_worktree(session)  # recover if the worktree is missing/corrupt
         ensure_agent_dir(wt)
         ctext = _gather_comments_text(owner, repo, session.pr_number)
         prompt = _build_retry_prompt(session.agent_prompt, ctext, args)
@@ -270,7 +283,7 @@ def find_new_human_reply(session: Session, owner: str, repo: str) -> str | None:
 
 
 def resume_with_answer(session: Session, owner: str, repo: str, answer: str) -> None:
-    wt = session.worktree_path
+    wt = ensure_worktree(session)
     agent_dir = Path(wt) / ".agent"
     q = read_marker(wt, "clarification.md")
     reply = (
@@ -301,6 +314,7 @@ def resume_with_answer(session: Session, owner: str, repo: str, answer: str) -> 
 
 def relaunch(session: Session, owner: str, repo: str, resume: bool,
              prompt_filename: str, message: str) -> bool:
+    ensure_worktree(session)
     kill_tmux(session.repo_name, session.issue_number)
     ok = launch_agent(session.worktree_path, session, resume=resume, prompt_filename=prompt_filename)
     safe(lambda: post_comment(owner, repo, session.pr_number, message if ok else "❌ Failed to restart agent."))

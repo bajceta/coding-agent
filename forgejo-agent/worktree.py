@@ -1,6 +1,8 @@
 """Worktree and PR creation."""
 
 import logging
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -13,26 +15,64 @@ from utils import safe
 logger = logging.getLogger(__name__)
 
 
-def create_worktree(issue_num: int, repo: str, base_branch: str) -> tuple:
-    """Create (or reuse) a worktree. Returns (worktree_path, branch_name)."""
-    branch_name = f"issue-{issue_num}"
-    worktree_dir = Path(CONFIG["worktree_base"]) / f"{repo}-{issue_num}"
-    if worktree_dir.exists():
-        logger.info(f"Reusing existing worktree at {worktree_dir}")
-        return str(worktree_dir), branch_name
+def _is_usable_worktree(path: Path) -> bool:
+    """True if `path` is a usable git working tree (main repo or linked worktree).
 
-    logger.info(f"Creating worktree {worktree_dir} (branch {branch_name}, base {base_branch})")
+    A stale worktree dir (leftover files, but its `.git` pointer deleted) fails
+    here, which lets us detect and recover it instead of reusing it blindly.
+    """
+    r = subprocess.run(["git", "-C", str(path), "rev-parse", "--git-dir"],
+                       capture_output=True, text=True)
+    return r.returncode == 0
+
+
+def _remove_stale_worktree(worktree_dir: Path, branch_name: str) -> None:
+    """Best-effort removal of a worktree dir that is not a valid git worktree.
+
+    Clears both git's registration (prunable entry) and any leftover files so
+    the worktree can be recreated cleanly.
+    """
+    safe(lambda: git("worktree", "remove", str(worktree_dir), "--force"))
+    safe(lambda: git("worktree", "prune"))
+    if worktree_dir.exists():
+        shutil.rmtree(worktree_dir, ignore_errors=True)
+
+
+def _add_worktree(worktree_dir: Path, branch_name: str, base_branch: str) -> None:
     try:
         git("worktree", "add", "-B", branch_name, str(worktree_dir), base_branch)
     except RuntimeError as e:
         if "already used by worktree" in str(e):
             logger.warning(f"Branch {branch_name} held by a stale worktree; pruning...")
             git("worktree", "prune")
-            if worktree_dir.exists():
-                return str(worktree_dir), branch_name
             git("worktree", "add", "-B", branch_name, str(worktree_dir), base_branch)
         else:
             raise
+
+
+def create_worktree(issue_num: int, repo: str, base_branch: str) -> tuple:
+    """Create (or reuse) a worktree. Returns (worktree_path, branch_name).
+
+    Always returns a path that is a *valid* git worktree. If the target dir
+    exists but is not a usable worktree (corrupt/leftover from a crashed run),
+    it is removed and recreated so downstream git operations don't fail with
+    'not a git repository'.
+    """
+    branch_name = f"issue-{issue_num}"
+    worktree_dir = Path(CONFIG["worktree_base"]) / f"{repo}-{issue_num}"
+
+    if worktree_dir.exists():
+        if _is_usable_worktree(worktree_dir):
+            logger.info(f"Reusing existing worktree at {worktree_dir}")
+            return str(worktree_dir), branch_name
+        logger.warning(
+            f"Worktree dir {worktree_dir} exists but is not a valid git worktree; "
+            "removing stale contents and recreating."
+        )
+        _remove_stale_worktree(worktree_dir, branch_name)
+
+    logger.info(f"Creating worktree {worktree_dir} (branch {branch_name}, base {base_branch})")
+    _add_worktree(worktree_dir, branch_name, base_branch)
     return str(worktree_dir), branch_name
 
 
