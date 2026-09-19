@@ -6,10 +6,13 @@ Polls Forgejo for:
   - New issues assigned to 'aiagent'
   - PR comments containing /retry, /continue, /stop, /debug commands
 
-For each issue it creates a git worktree + PR, launches the local `agent`
-inside a tmux session, surfaces live progress in a single editable PR
-"status" comment, lets the agent ask for clarification in Forgejo comments
-when it is blocked, and resumes automatically when a human replies.
+For each issue it creates a git worktree + PR, launches the agent worker
+(start-docker.sh, which runs the agent in a container) as a window in a shared
+tmux session (windows named "{repo}-{branch}"; multiple daemons, one per repo,
+share the session), surfaces live progress
+in a single editable PR "status" comment, lets the agent ask for clarification
+in Forgejo comments when it is blocked, and resumes automatically when a human
+replies.
 
 Agent <-> daemon protocol (files under <worktree>/.agent/, git-ignored):
   prompt.md          input : the task (written by the daemon)
@@ -619,76 +622,146 @@ def read_marker(worktree_path: str, name: str) -> str:
         return ""
 
 
+# Single shared tmux session; every in-progress issue runs in its own window.
+# Multiple daemon instances (one per repo) share this session. Windows are named
+# "{repo}-{branch}" so they stay unique across repos, and each daemon only ever
+# touches its own repo's windows.
+TMUX_SESSION = "ai-agent"
+
+
+def _branch_for_issue(issue_num: int) -> str:
+    """Default branch name for an issue (matches create_worktree)."""
+    return f"issue-{issue_num}"
+
+
+def _window_name(repo: str, branch: str) -> str:
+    """Window name for a repo+branch inside the shared tmux session."""
+    return f"{repo}-{branch}"
+
+
+def _win_for_issue(repo: str, issue_num: int) -> str:
+    """Window name for an issue in `repo` (branch defaults to issue-N)."""
+    return _window_name(repo, _branch_for_issue(issue_num))
+
+
+def _list_window_names() -> list:
+    r = subprocess.run(["tmux", "list-windows", "-t", TMUX_SESSION, "-F", "#{window_name}"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        return []
+    return [line.strip() for line in r.stdout.splitlines() if line.strip()]
+
+
+def _is_my_window(repo: str, name: str) -> bool:
+    """True if `name` belongs to this repo's daemon.
+
+    Windows are named "{repo}-issue-N". Match precisely (fullmatch) so a repo
+    whose name is a prefix of another's (e.g. 'my' vs 'my-cool') never steals
+    the other's windows.
+    """
+    return re.fullmatch(re.escape(repo) + r"-issue-\d+", name) is not None
+
+
+def docker_start_script() -> str:
+    """Absolute path to start-docker.sh.
+
+    The daemon runs from the *target* repo, but start-docker.sh lives in the
+    agent3 repo (a different checkout), so point AGENT_DOCKER_START_SCRIPT at
+    its absolute path. Falls back to the target repo's own copy if present
+    (e.g. when the daemon runs inside agent3 itself).
+    """
+    env = os.environ.get("AGENT_DOCKER_START_SCRIPT")
+    if env:
+        if not Path(env).exists():
+            raise RuntimeError(f"AGENT_DOCKER_START_SCRIPT does not exist: {env}")
+        return env
+    top = _safe(lambda: git("rev-parse", "--show-toplevel"), os.getcwd())
+    candidate = Path(top) / "start-docker.sh"
+    if candidate.exists():
+        return str(candidate)
+    raise RuntimeError(
+        "start-docker.sh not found in the target repo. It lives in the agent3 "
+        "repo — set AGENT_DOCKER_START_SCRIPT to its absolute path."
+    )
+
+
 def launch_agent(worktree_path: str, session: Session, resume: bool,
                  prompt_filename: str = ".agent/prompt.md") -> bool:
-    """Start (or restart) the agent in a tmux session. Returns success."""
+    """Start (or restart) the agent worker in a window of the shared tmux session.
+
+    The worker is launched via start-docker.sh (runs the agent in a container),
+    so prompt/session/log paths are relative to the worktree (mounted as /workspace).
+    Returns success.
+    """
     wt = worktree_path
     session_json = Path(wt) / ".agent" / "session.json"
+    repo = session.repo_name
+    branch = session.branch_name or _branch_for_issue(session.issue_number)
+    win = _window_name(repo, branch)
 
-    parts = [CONFIG["agent_binary"], "--mode", "run", "-y", "-f", prompt_filename]
+    # start-docker.sh already forces --yolo --disable-containers --no-intro;
+    # --yes-i-am-sure skips its interactive confirmation (we run non-interactively).
+    parts = [docker_start_script(), "--yes-i-am-sure", "--mode", "run", "-y", "-f", prompt_filename]
     if resume and session_json.exists():
         parts += ["--continue", ".agent/session.json"]
     parts += ["--save", ".agent/session.json", "-l", ".agent/agent.log"]
     agent_cmd = " ".join(shlex.quote(p) for p in parts)
     shell_cmd = f"cd {shlex.quote(wt)} && {agent_cmd}"
 
-    session_name = f"agent-{session.issue_number}"
-    subprocess.run(["tmux", "kill-session", "-t", session_name], capture_output=True)
+    # Drop any stale window for this issue, then (re)create it in the shared session.
+    kill_tmux(repo, session.issue_number)
 
-    logger.info(f"Launching agent in tmux session '{session_name}' (resume={resume})")
-    result = subprocess.run(
-        ["tmux", "new-session", "-d", "-s", session_name, shell_cmd],
-        capture_output=True, text=True, env=ssh_env(),
-    )
+    has_session = subprocess.run(["tmux", "has-session", "-t", TMUX_SESSION],
+                                 capture_output=True, text=True).returncode == 0
+    if has_session:
+        cmd = ["tmux", "new-window", "-d", "-t", TMUX_SESSION, "-n", win, shell_cmd]
+    else:
+        cmd = ["tmux", "new-session", "-d", "-s", TMUX_SESSION, "-n", win, shell_cmd]
+
+    logger.info(f"Launching agent for issue #{session.issue_number} "
+                f"in '{TMUX_SESSION}:{win}' (resume={resume})")
+    result = subprocess.run(cmd, capture_output=True, text=True, env=ssh_env())
     if result.returncode != 0:
-        logger.error(f"Failed to start tmux session: {result.stderr}")
+        logger.error(f"Failed to start agent window: {result.stderr}")
         return False
-    logger.info(f"Attach with: tmux attach -t {session_name}")
+    logger.info(f"Attach with: tmux attach -t {TMUX_SESSION}")
     return True
 
 
-def tmux_running(issue_num: int) -> bool:
-    r = subprocess.run(["tmux", "has-session", "-t", f"agent-{issue_num}"],
-                       capture_output=True, text=True)
-    return r.returncode == 0
+def tmux_running(repo: str, issue_num: int) -> bool:
+    """True if the issue's window exists in the shared session."""
+    return _win_for_issue(repo, issue_num) in _list_window_names()
 
 
-def kill_tmux(issue_num: int) -> None:
-    subprocess.run(["tmux", "kill-session", "-t", f"agent-{issue_num}"], capture_output=True)
+def kill_tmux(repo: str, issue_num: int) -> None:
+    subprocess.run(["tmux", "kill-window", "-t", f"{TMUX_SESSION}:{_win_for_issue(repo, issue_num)}"],
+                   capture_output=True)
 
 
-def live_agent_count() -> int:
-    r = subprocess.run(["tmux", "list-sessions"], capture_output=True, text=True)
-    if r.returncode != 0:
-        return 0
-    return sum(1 for line in r.stdout.splitlines() if line.split(":")[0].startswith("agent-"))
+def live_agent_count(repo: str) -> int:
+    """Count this repo's live agent windows."""
+    return sum(1 for name in _list_window_names() if _is_my_window(repo, name))
 
 
-def list_agent_tmux_sessions() -> list:
-    """Return issue numbers that have a live 'agent-<n>' tmux session."""
-    r = subprocess.run(["tmux", "list-sessions", "-F", "#{session_name}"],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        return []
+def list_agent_windows(repo: str) -> list:
+    """Return issue numbers (for this repo) that have a live window."""
     nums = []
-    for line in r.stdout.splitlines():
-        name = line.strip()
-        if name.startswith("agent-"):
-            suffix = name[len("agent-"):]
-            if suffix.isdigit():
-                nums.append(int(suffix))
+    for name in _list_window_names():
+        m = re.fullmatch(re.escape(repo) + r"-issue-(\d+)", name)
+        if m:
+            nums.append(int(m.group(1)))
     return nums
 
 
-def kill_orphaned_sessions(state: AgentState) -> None:
-    """Kill tmux sessions that are not tracked in the state file."""
+def kill_orphaned_sessions(state: AgentState, repo: str) -> None:
+    """Kill this repo's agent windows that are not tracked in the state file."""
     tracked = {s.issue_number for s in state.sessions.values()}
-    orphans = [n for n in list_agent_tmux_sessions() if n not in tracked]
+    orphans = [n for n in list_agent_windows(repo) if n not in tracked]
     for n in orphans:
-        logger.warning(f"Killing orphaned tmux session 'agent-{n}' (not in state)")
-        kill_tmux(n)
+        logger.warning(f"Killing orphaned agent window '{_win_for_issue(repo, n)}' (not in state)")
+        kill_tmux(repo, n)
     if orphans:
-        logger.info(f"Cleaned up {len(orphans)} orphaned session(s): {orphans}")
+        logger.info(f"Cleaned up {len(orphans)} orphaned window(s): {orphans}")
 
 
 # ─── Labels ────────────────────────────────────────────────────
@@ -734,7 +807,8 @@ def build_status_text(session: Session) -> str:
         lines += ["", "**Changes:**", "```", diffstat, "```"]
     if logtail:
         lines += ["", "**Latest activity:**", "```", logtail, "```"]
-    lines += ["", f"_Session: `tmux attach -t agent-{session.issue_number}`_"]
+    win = _window_name(session.repo_name, session.branch_name or _branch_for_issue(session.issue_number))
+    lines += ["", f"_Session: `tmux attach -t {TMUX_SESSION}` (window `{win}`)_"]
     return "\n".join(lines)
 
 
@@ -920,7 +994,7 @@ def resume_with_answer(session: Session, owner: str, repo: str, answer: str) -> 
 
 def relaunch(session: Session, owner: str, repo: str, resume: bool,
              prompt_filename: str, message: str) -> bool:
-    kill_tmux(session.issue_number)
+    kill_tmux(session.repo_name, session.issue_number)
     ok = launch_agent(session.worktree_path, session, resume=resume, prompt_filename=prompt_filename)
     _safe(lambda: post_comment(owner, repo, session.pr_number, message if ok else "❌ Failed to restart agent."))
     if ok:
@@ -942,12 +1016,12 @@ def reconcile_sessions(state: AgentState, owner: str, repo: str) -> None:
     for sid, session in list(state.sessions.items()):
         try:
             if session.status == "processing":
-                if not tmux_running(session.issue_number):
+                if not tmux_running(repo, session.issue_number):
                     classify_end(session, owner, repo)
                 else:
                     started = parse_iso(session.started_at)
                     if started and (now - started) > timedelta(minutes=CONFIG["max_runtime_minutes"]):
-                        kill_tmux(session.issue_number)
+                        kill_tmux(repo, session.issue_number)
                         finalize_failed(session, owner, repo,
                                         f"Timed out after {CONFIG['max_runtime_minutes']} minutes.")
             elif session.status == "waiting_clarification":
@@ -971,7 +1045,7 @@ def reconcile_sessions(state: AgentState, owner: str, repo: str) -> None:
 def cleanup_session(session: Session) -> None:
     n = session.issue_number
     branch = session.branch_name or f"issue-{n}"
-    kill_tmux(n)
+    kill_tmux(session.repo_name, n)
     # Remove worktree first — git won't delete a branch that's checked out in a worktree.
     wt = Path(session.worktree_path)
     if wt.exists():
@@ -1176,7 +1250,7 @@ def handle_pr_command(pr_num: int, command: str, args: str, state: AgentState,
 
     try:
         if command == "stop":
-            kill_tmux(issue_num)
+            kill_tmux(session.repo_name, issue_num)
             set_labels(session, add=["done"], remove=["processing", "waiting"])
             session.status = "done"
             session.finished_at = datetime.now().isoformat()
@@ -1260,10 +1334,10 @@ def check_new_issues(state: AgentState, owner: str, repo: str) -> None:
         sid = str(n)
         if sid in state.sessions:
             continue
-        if tmux_running(n):
+        if tmux_running(repo, n):
             logger.info(f"Issue #{n} already has a running session; skipping")
             continue
-        if live_agent_count() >= CONFIG["max_concurrent_sessions"]:
+        if live_agent_count(repo) >= CONFIG["max_concurrent_sessions"]:
             logger.info(f"At capacity ({CONFIG['max_concurrent_sessions']}); deferring issue #{n}")
             continue
         try:
@@ -1303,7 +1377,7 @@ def run_daemon(interval: int) -> None:
         iteration += 1
         #logger.info(f"--- Poll iteration #{iteration} ---")
         try:
-            kill_orphaned_sessions(state)
+            kill_orphaned_sessions(state, repo)
             reconcile_sessions(state, owner, repo)
             check_new_issues(state, owner, repo)
             check_pr_commands(state, owner, repo)
@@ -1355,18 +1429,26 @@ def main() -> None:
         icons = {"processing": "🟢", "waiting_clarification": "⏸️", "done": "✅", "failed": "❌"}
         print(f"\n📊 Sessions: {len(state.sessions)}")
         for _, s in state.sessions.items():
-            running = tmux_running(s.issue_number)
+            rname = s.repo_name
+            running = tmux_running(rname, s.issue_number) if rname else False
             icon = icons.get(s.status, "•")
-            extra = f" (tmux: agent-{s.issue_number})" if running else ""
+            win = _win_for_issue(rname, s.issue_number) if rname else ""
+            extra = f" (tmux: {TMUX_SESSION}:{win})" if running else ""
             print(f"  {icon} #{s.issue_number} [{s.status}] PR#{s.pr_number}{extra}")
             if s.error:
                 print(f"      error: {s.error}")
-        tracked = {s.issue_number for s in state.sessions.values()}
-        live = list_agent_tmux_sessions()
-        orphans = [n for n in live if n not in tracked]
-        print(f"\nLive agent sessions: {len(live)} / {CONFIG['max_concurrent_sessions']}")
-        if orphans:
-            print(f"  ⚠️  Orphaned (not in state): {orphans} — will be killed on next poll")
+        # All sessions in one state file belong to a single repo; derive it to
+        # enumerate live windows (lets `status` run without a git checkout).
+        repo = next((s.repo_name for s in state.sessions.values() if s.repo_name), None)
+        if repo:
+            tracked = {s.issue_number for s in state.sessions.values()}
+            live = list_agent_windows(repo)
+            orphans = [n for n in live if n not in tracked]
+            print(f"\nLive agent sessions: {len(live)} / {CONFIG['max_concurrent_sessions']}")
+            if orphans:
+                print(f"  ⚠️  Orphaned (not in state): {orphans} — will be killed on next poll")
+        else:
+            print("\nLive agent sessions: n/a (no sessions)")
         print(f"Processed comments: {len(state.processed_comments)}")
         print(f"Last issue check: {state.last_issue_check}")
         print(f"Last PR check: {state.last_pr_check}")
@@ -1383,7 +1465,7 @@ def main() -> None:
     elif args.command == "check":
         BOT_LOGIN = validate_token()
         state = AgentState.load()
-        kill_orphaned_sessions(state)
+        kill_orphaned_sessions(state, repo)
         reconcile_sessions(state, owner, repo)
         check_new_issues(state, owner, repo)
         check_pr_commands(state, owner, repo)
@@ -1402,7 +1484,7 @@ def main() -> None:
         else:
             branch = f"issue-{args.issue}"
             wt = Path(CONFIG["worktree_base"]) / f"{repo}-{args.issue}"
-            kill_tmux(args.issue)
+            kill_tmux(repo, args.issue)
             _safe(lambda: git("branch", "-D", branch))
             _safe(lambda: run_cmd(["git", "push", get_remote(), "--delete", branch], check=False, env=ssh_env()))
             if wt.exists():
