@@ -45,6 +45,23 @@ if ping -c1 -W1 192.168.3.254 &>/dev/null; then
     DNS_ARGS=(--dns 192.168.3.254)
 fi
 
+# Worktree support: if we're in a git worktree, mount the main repo at its
+# absolute path so the .git pointer (gitdir: /path/to/main/.git/worktrees/...)
+# resolves inside the container. Without this, git push/fetch fail.
+EXTRA_MOUNTS=()
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || true)
+if [[ -n "$GIT_COMMON_DIR" ]]; then
+    # Resolve to absolute path (it may be relative like ".git")
+    GIT_COMMON_DIR=$(realpath "$GIT_COMMON_DIR")
+    MAIN_REPO=$(dirname "$GIT_COMMON_DIR")
+    # Only mount if the main repo is different from the current dir (i.e. we're
+    # actually in a worktree, not the main checkout)
+    if [[ "$MAIN_REPO" != "$CURRENT_DIR" ]]; then
+        EXTRA_MOUNTS=(-v "$MAIN_REPO:$MAIN_REPO")
+        echo "Main repo: $MAIN_REPO (mounted for git worktree access)"
+    fi
+fi
+
 echo "Container: $CONTAINER_NAME"
 echo "Workspace: $CURRENT_DIR"
 echo "Agent work: $AGENT_WORK_DIR"
@@ -53,6 +70,7 @@ echo "Args: ${AGENT_args[*]:-none}"
 docker run -it --rm \
     --name "$CONTAINER_NAME" \
     "${DNS_ARGS[@]}" \
+    "${EXTRA_MOUNTS[@]}" \
     -v "$SCRIPT_DIR":/agent:ro \
     -v "$HOME/.config/codingagent.json":/home/node/.config/codingagent.json:ro \
     -v "$HOME/.ssh/id_ed_25519_aiagent":/tmp/ssh_key:ro \
