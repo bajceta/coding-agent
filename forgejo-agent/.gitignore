@@ -1,0 +1,6 @@
+# Runtime artifacts (never commit)
+ai-agent-state.json
+ai-agent-state.json.tmp
+ai-agent.log
+__pycache__/
+*.pyc

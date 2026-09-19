@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Check if running in home directory
+set -euo pipefail
+
 HOME_DIR="$HOME"
 CURRENT_DIR="$PWD"
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
-echo "Script directory (relative): $SCRIPT_DIR"
 
-# Check if current directory is exactly the home directory (not a subdirectory)
+# Safety: refuse to run in home directory
 if [[ "$CURRENT_DIR" == "$HOME_DIR" ]]; then
     echo "Error: Cannot run in home directory. Please run from a subdirectory."
     exit 1
 fi
 
-# Ask for confirmation if not in home directory
+# Confirmation (unless --yes-i-am-sure)
 if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$1" != "--yes-i-am-sure" ]]; then
     read -p "Are you sure you want to run the agent in YOLO mode in $CURRENT_DIR? (y/n): " -n 1 -r
     echo
@@ -22,25 +22,43 @@ if [[ "$CURRENT_DIR" != "$HOME_DIR" && "$1" != "--yes-i-am-sure" ]]; then
     fi
 fi
 
-# Handle --yes-i-am-sure flag - it's for the script, not passed to the agent
+# Separate our flags from agent args
 AGENT_args=()
 if [[ "$1" == "--yes-i-am-sure" ]]; then
-    echo "WARNING WARNING WARNING YOLO MODE, NO QUESTIONS ASKED FOR TOOL CALLS"
-    # Skip the --yes-i-am-sure flag and pass the rest
+    echo "WARNING: YOLO MODE — no questions asked for tool calls"
     AGENT_args=("${@:2}")
 else
-    AGENT_args=("${@}")
+    AGENT_args=("$@")
 fi
 
-echo "using args:"
-echo "${AGENT_args[@]}"
-# Run the docker command
+# Isolation: unique container name from project path hash
+PROJECT_HASH=$(echo -n "$CURRENT_DIR" | md5sum | cut -c1-8)
+CONTAINER_NAME="agent-${PROJECT_HASH}"
+
+# Per-container agent work dir (avoids shared-state conflicts)
+AGENT_WORK_DIR="$HOME/agent_work/${PROJECT_HASH}"
+mkdir -p "$AGENT_WORK_DIR"
+
+# Optional DNS (only if the resolver is reachable)
+DNS_ARGS=()
+if ping -c1 -W1 192.168.3.254 &>/dev/null; then
+    DNS_ARGS=(--dns 192.168.3.254)
+fi
+
+echo "Container: $CONTAINER_NAME"
+echo "Workspace: $CURRENT_DIR"
+echo "Agent work: $AGENT_WORK_DIR"
+echo "Args: ${AGENT_args[*]:-none}"
+
 docker run -it --rm \
-    -v $SCRIPT_DIR:/agent \
-    --dns 192.168.3.254 \
-    -v $HOME/.config/codingagent.json:/home/node/.config/codingagent.json \
+    --name "$CONTAINER_NAME" \
+    "${DNS_ARGS[@]}" \
+    -v "$SCRIPT_DIR":/agent:ro \
+    -v "$HOME/.config/codingagent.json":/home/node/.config/codingagent.json:ro \
+    -v "$HOME/.ssh/id_ed_25519_aiagent":/tmp/ssh_key:ro \
+    -e GIT_SSH_COMMAND="ssh -i /tmp/ssh_key -o StrictHostKeyChecking=accept-new" \
     --user $(id -u):$(id -g) \
-    -v $PWD:/workspace \
-    -v $HOME/agent_work:/workspace/agent \
+    -v "$CURRENT_DIR":/workspace \
+    -v "$AGENT_WORK_DIR":/workspace/.agent-work \
     -w /workspace \
-    agent-runner:2 /agent/index.ts --yolo --disable-containers --no-intro "${AGENT_args[@]}"
+    agent-runner:3 /agent/index.ts --yolo --disable-containers --no-intro "${AGENT_args[@]}"
