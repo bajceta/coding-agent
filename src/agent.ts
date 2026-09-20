@@ -36,6 +36,8 @@ class Agent {
     modelManager: ModelManager;
     confirmation: (text: string) => void | null = null;
     private modeChanged: boolean = true;
+    private isRunning: boolean = false;
+    private steerPending: string | null = null;
 
     constructor(config: Config) {
         this.config = config;
@@ -160,6 +162,14 @@ class Agent {
             this.confirmation(input);
             return;
         }
+
+        // Steer: if agent is running, queue this input and abort current LLM request
+        if (this.isRunning) {
+            this.steerPending = input;
+            this.llm.stopRequest();
+            return;
+        }
+
         const loadedImage = this.imageHandler.getLoadedImageData();
         let content: any = input;
 
@@ -505,140 +515,171 @@ class Agent {
     async run() {
         let currentMessages = this.messages;
         let complete = false;
+        this.isRunning = true;
 
-        while (!complete) {
-            complete = true;
-            let response: LLMResponse;
+        try {
+            while (!complete) {
+                complete = true;
 
-            try {
-                this.print('\n\x1b[32mAgent: \x1b[0m');
-                this.window.startAgent();
-
-                this.window.setPrompt('Llm request processing...');
-                response = this.llm.makeRequest(currentMessages, this.tools);
-                currentMessages.push(response.msg);
-                await response.done;
-                log.debug(response.msg);
-                this.updateStats(response.stats);
-                //handle empty message
-                if (response.msg.content === '' && response.msg.tool_calls?.length === 0) {
-                    log.error('no content and no toolcall, pop the message');
-                    //currentMessages.pop();
-                    const msg = {
+                // Inject pending steer message before next LLM request
+                if (this.steerPending) {
+                    currentMessages.push({
                         role: 'user',
-                        content: 'continue',
-                    };
-                    currentMessages.push(msg);
+                        content: this.steerPending,
+                    });
+                    this.steerPending = null;
                     complete = false;
                     continue;
                 }
-                //qwen failed toolcall retry
-                if (typeof response.msg.content === 'string') {
-                    const text = response.msg.content as String;
-                    if (text.includes('tool_call>')) {
-                        log.error('qwen bad tool call');
+
+                let response: LLMResponse;
+
+                try {
+                    this.print('\n\x1b[32mAgent: \x1b[0m');
+                    this.window.startAgent();
+
+                    this.window.setPrompt('Llm request processing...');
+                    response = this.llm.makeRequest(currentMessages, this.tools);
+                    currentMessages.push(response.msg);
+                    await response.done;
+                    log.debug(response.msg);
+                    this.updateStats(response.stats);
+                    //handle empty message
+                    if (response.msg.content === '' && response.msg.tool_calls?.length === 0) {
+                        log.error('no content and no toolcall, pop the message');
+                        //currentMessages.pop();
                         const msg = {
                             role: 'user',
-                            content: 'Toll call wrong format, try again',
+                            content: 'continue',
                         };
                         currentMessages.push(msg);
                         complete = false;
+                        continue;
                     }
-                }
+                    //qwen failed toolcall retry
+                    if (typeof response.msg.content === 'string') {
+                        const text = response.msg.content as String;
+                        if (text.includes('tool_call>')) {
+                            log.error('qwen bad tool call');
+                            const msg = {
+                                role: 'user',
+                                content: 'Toll call wrong format, try again',
+                            };
+                            currentMessages.push(msg);
+                            complete = false;
+                        }
+                    }
 
-                if (response.msg.reasoning_content) {
-                    const text = response.msg.reasoning_content;
-                    if (text && text.includes('tool_call>')) {
-                        log.error('qwen tool call in reasoning_content');
-                        const msg = {
-                            role: 'user',
-                            content: 'Toll call wrong format, try again',
-                        };
-                        currentMessages.push(msg);
+                    if (response.msg.reasoning_content) {
+                        const text = response.msg.reasoning_content;
+                        if (text && text.includes('tool_call>')) {
+                            log.error('qwen tool call in reasoning_content');
+                            const msg = {
+                                role: 'user',
+                                content: 'Toll call wrong format, try again',
+                            };
+                            currentMessages.push(msg);
+                            complete = false;
+                        }
+                    }
+
+                    const toolCalls: ToolCall[] = this.parser.parseToolCalls(
+                        response.msg,
+                        this.tools,
+                    );
+
+                    if (toolCalls.length > 0) {
                         complete = false;
-                    }
-                }
 
-                const toolCalls: ToolCall[] = this.parser.parseToolCalls(response.msg, this.tools);
+                        // Check if any tool call is writeFile or replace on a TypeScript file
+                        const hasTypeScriptWriteOrReplace = toolCalls.some((tc) => {
+                            if (tc.name !== 'writeFile' && tc.name !== 'replace') return false;
+                            const filePath = tc.arguments?.path || '';
+                            const tsExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
+                            return tsExtensions.some((ext) => filePath.endsWith(ext));
+                        });
 
-                if (toolCalls.length > 0) {
-                    complete = false;
+                        for (const toolCall of toolCalls) {
+                            if (!toolCall) continue;
+                            this.window.statusBar.setTool(toolCall.name);
+                            const result = await this.processToolCall(toolCall);
+                            const msg = {
+                                role: 'tool',
+                                name: toolCall.name,
+                                content: result,
+                                tool_call_id: toolCall.id,
+                            };
+                            log.debug(JSON.stringify(msg));
+                            currentMessages.push(msg);
 
-                    // Check if any tool call is writeFile or replace on a TypeScript file
-                    const hasTypeScriptWriteOrReplace = toolCalls.some((tc) => {
-                        if (tc.name !== 'writeFile' && tc.name !== 'replace') return false;
-                        const filePath = tc.arguments?.path || '';
-                        const tsExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
-                        return tsExtensions.some((ext) => filePath.endsWith(ext));
-                    });
+                            this.window.statusBar.clearTool();
+                        }
 
-                    for (const toolCall of toolCalls) {
-                        if (!toolCall) continue;
-                        this.window.statusBar.setTool(toolCall.name);
-                        const result = await this.processToolCall(toolCall);
-                        const msg = {
-                            role: 'tool',
-                            name: toolCall.name,
-                            content: result,
-                            tool_call_id: toolCall.id,
-                        };
-                        log.debug(JSON.stringify(msg));
-                        currentMessages.push(msg);
+                        // If any tool was writeFile or replace on a TypeScript file, run TypeScript compilation
+                        if (hasTypeScriptWriteOrReplace) {
+                            try {
+                                log.debug(
+                                    'Running TypeScript compilation after file modifications',
+                                );
+                                this.window.setPrompt('Compiling TypeScript...');
+                                const { stdout, stderr } = await execAsync(
+                                    'npx --yes tsc -p tsconfig.json',
+                                );
+                                const compilationOutput =
+                                    stdout || stderr || 'TypeScript compilation completed.';
 
-                        this.window.statusBar.clearTool();
-                    }
-
-                    // If any tool was writeFile or replace on a TypeScript file, run TypeScript compilation
-                    if (hasTypeScriptWriteOrReplace) {
-                        try {
-                            log.debug('Running TypeScript compilation after file modifications');
-                            this.window.setPrompt('Compiling TypeScript...');
-                            const { stdout, stderr } = await execAsync(
-                                'npx --yes tsc -p tsconfig.json',
-                            );
-                            const compilationOutput =
-                                stdout || stderr || 'TypeScript compilation completed.';
-
-                            // Append compilation result to the last tool message
-                            if (currentMessages.length > 0) {
-                                const lastMsg = currentMessages[currentMessages.length - 1];
-                                if (lastMsg.role === 'tool') {
-                                    lastMsg.content += `\n\nTypeScript compilation result:\n${compilationOutput}`;
-                                    log.debug(
-                                        'Appended TypeScript compilation result to last tool message',
-                                    );
+                                // Append compilation result to the last tool message
+                                if (currentMessages.length > 0) {
+                                    const lastMsg = currentMessages[currentMessages.length - 1];
+                                    if (lastMsg.role === 'tool') {
+                                        lastMsg.content += `\n\nTypeScript compilation result:\n${compilationOutput}`;
+                                        log.debug(
+                                            'Appended TypeScript compilation result to last tool message',
+                                        );
+                                    }
                                 }
-                            }
-                        } catch (error) {
-                            let errorMsg: string;
-                            if (typeof error === 'object' && error !== null && 'stderr' in error) {
-                                errorMsg =
-                                    (error as any).stderr ||
-                                    (error as any).stdout ||
-                                    'TypeScript compilation failed.';
-                            } else {
-                                errorMsg = error instanceof Error ? error.message : 'Unknown error';
-                            }
-                            log.debug(`TypeScript compilation failed: ${errorMsg}`);
+                            } catch (error) {
+                                let errorMsg: string;
+                                if (
+                                    typeof error === 'object' &&
+                                    error !== null &&
+                                    'stderr' in error
+                                ) {
+                                    errorMsg =
+                                        (error as any).stderr ||
+                                        (error as any).stdout ||
+                                        'TypeScript compilation failed.';
+                                } else {
+                                    errorMsg =
+                                        error instanceof Error ? error.message : 'Unknown error';
+                                }
+                                log.debug(`TypeScript compilation failed: ${errorMsg}`);
 
-                            // Append compilation error to the last tool message
-                            if (currentMessages.length > 0) {
-                                const lastMsg = currentMessages[currentMessages.length - 1];
-                                if (lastMsg.role === 'tool') {
-                                    lastMsg.content += `\n\nTypeScript compilation error:\n${errorMsg}`;
+                                // Append compilation error to the last tool message
+                                if (currentMessages.length > 0) {
+                                    const lastMsg = currentMessages[currentMessages.length - 1];
+                                    if (lastMsg.role === 'tool') {
+                                        lastMsg.content += `\n\nTypeScript compilation error:\n${errorMsg}`;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    log.info('User cancelled request');
-                    currentMessages.pop();
-                } else {
-                    this.handleError('LLM Stream Error', error);
+                } catch (error) {
+                    if (this.steerPending) {
+                        // Steering: keep partial response, loop will inject steer at top
+                        log.info('Steering: interrupted current LLM response');
+                        complete = false;
+                    } else if (error.name === 'AbortError') {
+                        log.info('User cancelled request');
+                        currentMessages.pop();
+                    } else {
+                        this.handleError('LLM Stream Error', error);
+                    }
                 }
             }
+        } finally {
+            this.isRunning = false;
         }
 
         this.showUserPrompt();

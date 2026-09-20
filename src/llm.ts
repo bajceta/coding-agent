@@ -212,7 +212,7 @@ class LLM {
 
     stopRequest() {
         if (this.currentRequest) {
-            this.currentRequest.abort();
+            this.currentRequest.destroy(new Error('Aborted'));
             this.currentRequest = null;
         }
     }
