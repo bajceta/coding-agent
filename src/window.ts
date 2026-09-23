@@ -132,9 +132,13 @@ class Window {
                               call.function.arguments?.length;
                         const _lines = _args?.split('\\n');
                         msgs +=
-                            'toolcall: ' + call.function.name + ' ' + _lines
+                            'toolcall: ' +
+                            call.function.name +
+                            ' ' +
+                            (_lines
                                 ? _lines.join('\n').replaceAll('\\"', '"').replaceAll('\\\\', '\\')
-                                : '' + '\n';
+                                : '') +
+                            '\n';
                     }
                 }
             } else if (msg.role == 'user') {
