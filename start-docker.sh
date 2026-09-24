@@ -73,9 +73,8 @@ docker run -it --rm \
     "${EXTRA_MOUNTS[@]}" \
     -v "$SCRIPT_DIR":/agent:ro \
     -v "$HOME/.config/codingagent.json":/home/node/.config/codingagent.json:ro \
-    -v "$HOME/.ssh/id_ed_25519_aiagent":/tmp/ssh_key:ro \
+    -v "$HOME/.ssh/id_ed_25519_aiagent":/home/node/.ssh/id_ed_25519_aiagent:ro \
     -v "$SCRIPT_DIR/.ssh/config":/home/node/.ssh/config:ro \
-    -e GIT_SSH_COMMAND="ssh -i /tmp/ssh_key -o StrictHostKeyChecking=accept-new" \
     --user $(id -u):$(id -g) \
     -v "$CURRENT_DIR":/workspace \
     -v "$AGENT_WORK_DIR":/workspace/.agent-work \

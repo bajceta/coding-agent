@@ -15,8 +15,8 @@ RUN npm install -g @vtsls/language-server oxfmt oxlint typescript
 COPY build.sh ./
 RUN ./build.sh
 
-# SSH client for git operations
-RUN apk add --no-cache openssh-client
+RUN mkdir -p /home/node/.ssh && chown -R node:node /home/node/.ssh
+COPY .ssh/config /home/node/.ssh/config
 
 # Default workdir
 WORKDIR /workspace
