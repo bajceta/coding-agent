@@ -5,6 +5,7 @@ RUN apk add --no-cache \
     ripgrep the_silver_searcher git bash grep curl findutils \
     tmux make cmake jq tree htop unzip wget \
     sqlite openssl procps \
+    openssh-client \
     python3 patch php
 
 # Node tooling

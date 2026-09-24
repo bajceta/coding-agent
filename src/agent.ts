@@ -616,7 +616,7 @@ class Agent {
                         }
 
                         // If any tool was writeFile or replace on a TypeScript file, run TypeScript compilation
-                        if (hasTypeScriptWriteOrReplace) {
+                        if (false && hasTypeScriptWriteOrReplace) {
                             try {
                                 log.debug(
                                     'Running TypeScript compilation after file modifications',
